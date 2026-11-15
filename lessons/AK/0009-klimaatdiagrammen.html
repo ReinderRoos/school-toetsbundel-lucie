@@ -38,6 +38,22 @@
     }
     .toolbar button:hover, .diagram-card button:hover { filter: brightness(0.97); }
     .toolbar .meta { color: var(--muted); }
+    .size-picker {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.15rem; border: 1px solid var(--line); border-radius: 8px;
+      background: #fff;
+    }
+    .size-picker .size-label {
+      font-size: 0.72rem; font-weight: 600; color: var(--muted);
+      padding: 0 0.35rem; text-transform: uppercase; letter-spacing: 0.02em;
+    }
+    .size-picker button {
+      min-width: 2rem; padding: 0.28rem 0.55rem; border-radius: 6px;
+      border: 1px solid transparent; background: transparent;
+    }
+    .size-picker button.active {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
     .play {
       display: grid;
       grid-template-columns: minmax(520px, 1.7fr) minmax(240px, 0.72fr);
@@ -446,12 +462,18 @@
     <header class="site">
       <p class="eyebrow"><a href="../../index.html">Lucie</a> · AK · Klimaat · Köppen H3.5</p>
       <h1>Klimaatdiagrammen koppelen</h1>
-      <p class="lede howto">Pool van 53 plekken. Elke ronde: <strong>8</strong> diagrammen → kies plaatsnaam → kies Köppen (boekcodes). Na nakijken eerst uitleg.</p>
+      <p class="lede howto">Grote plaatsengroep. Kies <strong>1</strong>, <strong>4</strong> of <strong>8</strong> diagrammen per ronde → plaats → Köppen (boekcodes). Na nakijken eerst uitleg.</p>
     </header>
 
     <div class="toolbar" id="toolbar">
       <button type="button" class="primary" id="btn-check">Nakijken</button>
       <button type="button" id="btn-new" class="hidden">Nieuwe ronde</button>
+      <div class="size-picker" role="group" aria-label="Aantal diagrammen per ronde">
+        <span class="size-label">Per ronde</span>
+        <button type="button" data-round-size="1" title="Snel: 1 diagram">1</button>
+        <button type="button" data-round-size="4" title="Kort: 4 diagrammen">4</button>
+        <button type="button" data-round-size="8" title="Standaard: 8 diagrammen">8</button>
+      </div>
       <span class="meta" id="round-meta"></span>
     </div>
 
@@ -491,7 +513,7 @@
   </div>
 
   <script>
-  const PLACES = [{"id": "singapore", "name": "Singapore", "country": "Singapore", "lat": 1.35, "lon": 103.82, "koppen": "Af", "t": [25.7, 26.1, 26.6, 26.9, 27.2, 27.2, 26.8, 26.8, 26.7, 26.6, 26.1, 25.8], "p": [206, 118, 203, 266, 238, 188, 175, 166, 177, 256, 348, 325], "koppen_detail": "Af"}, {"id": "belem", "name": "Belém", "country": "Brazilië", "lat": -1.45, "lon": -48.5, "koppen": "Af", "t": [26.3, 26.1, 26.3, 26.5, 26.8, 26.9, 26.8, 27.1, 27.3, 27.3, 27.4, 27.0], "p": [394, 438, 506, 466, 324, 206, 156, 129, 120, 136, 151, 284], "koppen_detail": "Af", "source_note": "INMET 1991–2020 (Wikipedia climate table)"}, {"id": "kisangani", "name": "Kisangani", "country": "DR Congo", "lat": 0.52, "lon": 25.19, "koppen": "Aw", "t": [26.1, 26.6, 26.1, 25.7, 25.5, 25.1, 24.9, 24.6, 24.7, 24.7, 24.7, 25.2], "p": [58, 89, 143, 142, 114, 86, 94, 140, 161, 174, 173, 93], "koppen_detail": "Am", "source_note": "Open-Meteo; driest <60 → Am/Aw (boek Aw)"}, {"id": "kualalumpur", "name": "Kuala Lumpur", "country": "Maleisië", "lat": 3.14, "lon": 101.69, "koppen": "Af", "t": [25.5, 26.2, 26.4, 26.3, 26.6, 26.6, 26.3, 26.3, 26.1, 26.0, 25.4, 25.4], "p": [207, 153, 250, 304, 216, 169, 182, 203, 233, 287, 381, 265], "koppen_detail": "Af"}, {"id": "mumbai", "name": "Mumbai", "country": "India", "lat": 19.08, "lon": 72.88, "koppen": "Aw", "t": [23.8, 24.7, 26.8, 28.3, 29.4, 28.0, 26.5, 26.2, 26.6, 27.7, 27.1, 25.1], "p": [0, 1, 1, 0, 14, 454, 656, 505, 318, 70, 10, 4], "koppen_detail": "Am"}, {"id": "miami", "name": "Miami", "country": "VS", "lat": 25.76, "lon": -80.19, "koppen": "Aw", "t": [20.4, 21.5, 22.4, 24.2, 25.6, 27.1, 27.9, 28.0, 27.3, 25.9, 23.5, 22.0], "p": [46, 41, 47, 54, 113, 154, 124, 148, 160, 110, 53, 39], "koppen_detail": "Am"}, {"id": "beijing", "name": "Peking", "country": "China", "lat": 39.9, "lon": 116.4, "koppen": "Dw", "t": [-3.5, -0.4, 6.4, 14.4, 21.5, 25.7, 27.0, 25.5, 20.8, 13.3, 4.0, -2.5], "p": [2, 6, 10, 19, 31, 79, 152, 112, 54, 32, 16, 3], "koppen_detail": "Dwa"}, {"id": "seoul", "name": "Seoul", "country": "Zuid-Korea", "lat": 37.57, "lon": 126.98, "koppen": "Dw", "t": [-3.3, -0.5, 4.5, 10.8, 16.8, 21.7, 24.3, 25.1, 20.5, 13.8, 6.1, -1.3], "p": [19, 28, 36, 74, 91, 117, 350, 253, 114, 50, 45, 22], "koppen_detail": "Dwa"}, {"id": "nuuk", "name": "Nuuk", "country": "Groenland", "lat": 64.18, "lon": -51.72, "koppen": "ET", "t": [-14.1, -13.4, -11.1, -5.2, 0.3, 6.0, 9.0, 8.4, 4.0, -2.5, -8.8, -11.9], "p": [50, 44, 45, 61, 65, 67, 64, 72, 106, 78, 86, 69], "koppen_detail": "ET"}, {"id": "longyearbyen", "name": "Longyearbyen", "country": "Spitsbergen", "lat": 78.22, "lon": 15.65, "koppen": "ET", "t": [-11.9, -12.6, -14.2, -9.4, -2.4, 2.6, 7.0, 5.6, 1.2, -4.9, -8.7, -10.7], "p": [42, 37, 36, 27, 23, 18, 34, 40, 48, 45, 48, 48], "koppen_detail": "ET"}, {"id": "mcmurdo", "name": "McMurdo", "country": "Antarctica", "lat": -77.85, "lon": 166.67, "koppen": "EF", "t": [-5.7, -12.0, -20.2, -24.6, -24.8, -26.2, -28.6, -28.4, -26.1, -20.4, -12.4, -5.9], "p": [8, 7, 5, 9, 7, 8, 5, 9, 6, 6, 4, 8], "koppen_detail": "EF"}, {"id": "chittagong", "name": "Chittagong", "country": "Bangladesh", "lat": 22.36, "lon": 91.8, "koppen": "Aw", "t": [19.4, 22.2, 25.5, 27.6, 28.1, 27.5, 26.8, 26.9, 27.1, 26.4, 23.6, 20.5], "p": [4, 7, 50, 108, 249, 503, 580, 421, 313, 227, 28, 15], "koppen_detail": "Am"}, {"id": "manaus", "name": "Manaus", "country": "Brazilië", "lat": -3.12, "lon": -60.02, "koppen": "Aw", "t": [26.3, 26.1, 26.3, 26.1, 26.2, 26.4, 26.6, 27.7, 28.2, 28.1, 27.4, 26.7], "p": [280, 288, 350, 345, 254, 140, 70, 59, 87, 124, 179, 276], "koppen_detail": "Am"}, {"id": "accra", "name": "Accra", "country": "Ghana", "lat": 5.6, "lon": -0.19, "koppen": "Aw", "t": [27.2, 27.6, 28.0, 27.8, 27.0, 25.5, 24.6, 24.3, 24.9, 25.9, 26.9, 27.2], "p": [22, 45, 54, 69, 121, 141, 74, 54, 101, 113, 52, 28], "koppen_detail": "Aw"}, {"id": "brasilia", "name": "Brasília", "country": "Brazilië", "lat": -15.79, "lon": -47.88, "koppen": "Aw", "t": [22.4, 22.5, 22.1, 21.9, 21.1, 20.3, 20.1, 21.7, 24.0, 24.0, 22.1, 22.3], "p": [185, 153, 192, 99, 18, 5, 0, 3, 17, 108, 232, 213], "koppen_detail": "Aw"}, {"id": "darwin", "name": "Darwin", "country": "Australië", "lat": -12.46, "lon": 130.84, "koppen": "Aw", "t": [27.8, 27.8, 27.9, 27.8, 26.8, 24.9, 25.0, 25.4, 27.5, 28.8, 29.1, 28.7], "p": [519, 340, 273, 93, 24, 1, 4, 1, 22, 76, 166, 325], "koppen_detail": "Aw"}, {"id": "bangkok", "name": "Bangkok", "country": "Thailand", "lat": 13.76, "lon": 100.5, "koppen": "Aw", "t": [26.0, 27.6, 28.8, 30.1, 29.8, 28.7, 28.0, 27.8, 27.4, 27.1, 27.2, 26.1], "p": [26, 16, 39, 66, 130, 134, 146, 153, 278, 191, 51, 15], "koppen_detail": "Aw"}, {"id": "bamako", "name": "Bamako", "country": "Mali", "lat": 12.64, "lon": -8.0, "koppen": "Aw", "t": [24.9, 27.7, 31.1, 32.9, 32.0, 29.5, 26.4, 25.4, 26.0, 27.6, 28.0, 25.2], "p": [1, 0, 1, 4, 29, 87, 166, 223, 141, 43, 1, 0], "koppen_detail": "Aw"}, {"id": "caracas", "name": "Caracas", "country": "Venezuela", "lat": 10.48, "lon": -66.9, "koppen": "Aw", "t": [21.5, 22.0, 22.6, 22.9, 23.2, 23.2, 23.0, 23.1, 23.4, 23.0, 22.3, 21.8], "p": [26, 21, 58, 150, 147, 98, 110, 151, 159, 193, 199, 77], "koppen_detail": "Aw"}, {"id": "cairo", "name": "Caïro", "country": "Egypte", "lat": 30.04, "lon": 31.24, "koppen": "BW", "t": [13.7, 15.5, 18.3, 21.8, 26.0, 28.6, 29.5, 29.9, 27.9, 24.5, 19.9, 15.5], "p": [4, 4, 2, 2, 0, 0, 0, 0, 0, 2, 3, 2], "koppen_detail": "BWh"}, {"id": "riyadh", "name": "Riyad", "country": "Saoedi-Arabië", "lat": 24.71, "lon": 46.68, "koppen": "BW", "t": [14.8, 17.1, 21.5, 26.7, 32.2, 35.0, 36.5, 36.2, 33.1, 27.9, 20.0, 15.0], "p": [4, 10, 11, 18, 4, 0, 0, 0, 0, 1, 21, 7], "koppen_detail": "BWh"}, {"id": "alice", "name": "Alice Springs", "country": "Australië", "lat": -23.7, "lon": 133.88, "koppen": "BW", "t": [29.9, 29.0, 26.5, 22.3, 16.8, 12.7, 13.0, 15.5, 20.2, 24.9, 27.4, 29.5], "p": [60, 36, 20, 7, 18, 5, 13, 5, 13, 11, 16, 33], "koppen_detail": "BWh"}, {"id": "phoenix", "name": "Phoenix", "country": "VS", "lat": 33.45, "lon": -112.07, "koppen": "BW", "t": [11.9, 13.9, 18.7, 23.2, 26.7, 33.7, 34.8, 34.2, 30.9, 24.3, 17.3, 11.7], "p": [33, 26, 16, 4, 3, 4, 23, 28, 28, 29, 21, 31], "koppen_detail": "BWh"}, {"id": "khartoum", "name": "Khartoem", "country": "Soedan", "lat": 15.5, "lon": 32.56, "koppen": "BW", "t": [23.5, 26.4, 29.3, 32.2, 34.6, 34.6, 33.0, 31.6, 33.3, 32.8, 28.2, 24.4], "p": [0, 0, 0, 0, 3, 2, 11, 24, 3, 4, 0, 0], "koppen_detail": "BWh"}, {"id": "lasvegas", "name": "Las Vegas", "country": "VS", "lat": 36.17, "lon": -115.14, "koppen": "BW", "t": [8.8, 11.0, 15.9, 20.0, 23.5, 31.2, 33.5, 32.4, 28.1, 20.7, 13.7, 8.3], "p": [24, 17, 10, 6, 7, 0, 10, 9, 10, 10, 11, 25], "koppen_detail": "BWh"}, {"id": "dakar", "name": "Dakar", "country": "Senegal", "lat": 14.72, "lon": -17.47, "koppen": "BS", "t": [22.7, 21.9, 22.1, 22.0, 23.1, 25.1, 26.8, 27.3, 27.6, 28.0, 26.5, 24.3], "p": [0, 0, 0, 0, 0, 3, 24, 153, 107, 18, 1, 0], "koppen_detail": "BSh"}, {"id": "niamey", "name": "Niamey", "country": "Niger", "lat": 13.51, "lon": 2.11, "koppen": "BS", "t": [23.4, 26.8, 30.2, 33.5, 34.4, 32.6, 29.8, 27.7, 29.3, 31.0, 28.3, 24.1], "p": [0, 0, 1, 2, 8, 24, 60, 150, 44, 8, 0, 0], "koppen_detail": "BSh"}, {"id": "denver", "name": "Denver", "country": "VS", "lat": 39.74, "lon": -104.99, "koppen": "BS", "t": [-3.4, -2.4, 3.4, 7.9, 12.1, 20.5, 23.0, 22.1, 18.5, 9.9, 2.5, -2.9], "p": [23, 30, 43, 64, 94, 39, 49, 30, 35, 39, 24, 21], "koppen_detail": "BSk"}, {"id": "ulan", "name": "Ulaanbaatar", "country": "Mongolië", "lat": 47.92, "lon": 106.92, "koppen": "BS", "t": [-19.9, -15.8, -5.2, 2.8, 9.4, 16.1, 18.7, 16.0, 9.6, 1.1, -9.5, -16.8], "p": [1, 3, 8, 14, 35, 48, 68, 66, 29, 13, 9, 2], "koppen_detail": "BSk"}, {"id": "tehran", "name": "Teheran", "country": "Iran", "lat": 35.69, "lon": 51.39, "koppen": "BS", "t": [2.4, 3.5, 9.3, 15.3, 22.4, 28.8, 31.7, 29.9, 25.5, 18.3, 8.6, 4.1], "p": [44, 39, 57, 41, 17, 3, 2, 7, 3, 28, 48, 38], "koppen_detail": "BSk"}, {"id": "athens", "name": "Athene", "country": "Griekenland", "lat": 37.98, "lon": 23.73, "koppen": "Cs", "t": [8.6, 10.0, 12.0, 15.9, 20.5, 25.1, 28.0, 27.9, 24.0, 18.6, 14.6, 10.1], "p": [55, 68, 48, 24, 26, 26, 7, 3, 23, 31, 55, 67], "koppen_detail": "Csa"}, {"id": "rome", "name": "Rome", "country": "Italië", "lat": 41.9, "lon": 12.5, "koppen": "Cs", "t": [7.4, 8.0, 10.7, 14.2, 17.2, 22.5, 25.5, 25.8, 21.4, 17.2, 12.8, 8.4], "p": [80, 99, 94, 67, 78, 32, 29, 17, 77, 108, 157, 70], "koppen_detail": "Csa"}, {"id": "perth", "name": "Perth", "country": "Australië", "lat": -31.95, "lon": 115.86, "koppen": "Cs", "t": [25.0, 25.0, 23.2, 19.8, 16.1, 14.0, 13.0, 13.7, 14.7, 17.5, 20.6, 23.0], "p": [27, 15, 23, 32, 61, 76, 95, 94, 53, 28, 15, 19], "koppen_detail": "Csa"}, {"id": "santiago", "name": "Santiago", "country": "Chili", "lat": -33.45, "lon": -70.67, "koppen": "Cs", "t": [21.9, 21.6, 20.2, 16.5, 13.0, 9.7, 8.9, 10.5, 12.4, 14.5, 18.1, 20.2], "p": [3, 5, 2, 30, 46, 67, 58, 58, 47, 42, 18, 9], "koppen_detail": "Csb"}, {"id": "losangeles", "name": "Los Angeles", "country": "VS", "lat": 34.05, "lon": -118.24, "koppen": "Cs", "t": [12.9, 13.2, 15.1, 17.0, 18.3, 21.2, 23.8, 24.6, 23.8, 20.5, 16.2, 12.5], "p": [68, 50, 44, 13, 9, 1, 4, 1, 4, 14, 24, 63], "koppen_detail": "Csa"}, {"id": "capetown", "name": "Kaapstad", "country": "Zuid-Afrika", "lat": -33.92, "lon": 18.42, "koppen": "Cs", "t": [21.6, 21.5, 20.1, 17.8, 15.4, 13.2, 12.8, 13.1, 14.4, 16.5, 18.0, 20.4], "p": [11, 10, 17, 32, 56, 101, 74, 74, 39, 31, 28, 16], "koppen_detail": "Csb"}, {"id": "newyork", "name": "New York", "country": "VS", "lat": 40.71, "lon": -74.01, "koppen": "Cf", "t": [-1.0, -0.1, 4.1, 10.6, 16.5, 21.3, 25.0, 23.5, 20.4, 14.2, 7.1, 3.1], "p": [81, 93, 109, 81, 95, 107, 113, 103, 91, 104, 75, 107], "koppen_detail": "Cfa"}, {"id": "shanghai", "name": "Shanghai", "country": "China", "lat": 31.23, "lon": 121.47, "koppen": "Cf", "t": [4.8, 5.9, 9.9, 15.2, 20.2, 23.5, 28.2, 28.1, 23.9, 18.9, 13.7, 6.9], "p": [48, 66, 80, 95, 124, 272, 156, 147, 121, 70, 62, 53], "koppen_detail": "Cfa"}, {"id": "buenosaires", "name": "Buenos Aires", "country": "Argentinië", "lat": -34.6, "lon": -58.38, "koppen": "Cf", "t": [24.4, 23.5, 20.7, 18.0, 14.6, 11.4, 10.4, 12.1, 14.2, 16.6, 20.2, 23.3], "p": [88, 118, 83, 95, 89, 56, 90, 69, 88, 116, 88, 85], "koppen_detail": "Cfa"}, {"id": "sydney", "name": "Sydney", "country": "Australië", "lat": -33.87, "lon": 151.21, "koppen": "Cf", "t": [22.7, 22.4, 21.2, 18.6, 15.3, 13.1, 12.2, 12.9, 15.4, 17.8, 19.6, 21.3], "p": [76, 86, 97, 65, 33, 74, 28, 38, 44, 49, 84, 53], "koppen_detail": "Cfa"}, {"id": "atlanta", "name": "Atlanta", "country": "VS", "lat": 33.75, "lon": -84.39, "koppen": "Cf", "t": [5.2, 8.0, 11.4, 16.6, 21.1, 24.8, 26.2, 25.6, 23.5, 17.6, 11.0, 8.3], "p": [112, 125, 106, 108, 99, 104, 117, 114, 73, 74, 97, 130], "koppen_detail": "Cfa"}, {"id": "amsterdam", "name": "Amsterdam", "country": "Nederland", "lat": 52.37, "lon": 4.9, "koppen": "Cf", "t": [3.5, 3.4, 6.0, 9.4, 12.8, 15.8, 18.1, 17.6, 15.1, 11.9, 7.3, 5.4], "p": [68, 53, 52, 48, 58, 72, 84, 91, 70, 74, 59, 77], "koppen_detail": "Cfb"}, {"id": "london", "name": "Londen", "country": "VK", "lat": 51.51, "lon": -0.13, "koppen": "Cf", "t": [4.3, 4.7, 6.6, 9.4, 12.5, 15.7, 18.1, 17.1, 14.8, 11.9, 7.7, 5.8], "p": [61, 48, 44, 44, 54, 60, 55, 72, 46, 58, 63, 62], "koppen_detail": "Cfb"}, {"id": "auckland", "name": "Auckland", "country": "Nieuw-Zeeland", "lat": -36.85, "lon": 174.76, "koppen": "Cf", "t": [19.6, 20.2, 18.9, 16.9, 14.6, 12.6, 11.4, 11.7, 12.7, 14.0, 15.8, 18.2], "p": [79, 69, 83, 81, 100, 95, 106, 109, 103, 68, 68, 92], "koppen_detail": "Cfb"}, {"id": "vancouver", "name": "Vancouver", "country": "Canada", "lat": 49.28, "lon": -123.12, "koppen": "Cf", "t": [4.1, 3.9, 6.2, 8.8, 12.9, 15.5, 18.6, 19.2, 15.7, 10.9, 6.4, 3.5], "p": [251, 181, 272, 169, 93, 76, 39, 49, 150, 240, 307, 276], "koppen_detail": "Cfb"}, {"id": "paris", "name": "Parijs", "country": "Frankrijk", "lat": 48.86, "lon": 2.35, "koppen": "Cf", "t": [4.2, 4.3, 7.5, 10.7, 14.0, 17.8, 20.3, 19.6, 16.5, 12.8, 8.1, 5.4], "p": [56, 48, 52, 44, 71, 65, 52, 59, 42, 53, 65, 72], "koppen_detail": "Cfb"}, {"id": "berlin", "name": "Berlijn", "country": "Duitsland", "lat": 52.52, "lon": 13.4, "koppen": "Cf", "t": [0.3, 1.0, 4.6, 9.8, 14.4, 18.3, 20.1, 19.8, 15.5, 10.5, 5.7, 2.8], "p": [56, 27, 41, 32, 53, 70, 91, 53, 50, 50, 49, 52], "koppen_detail": "Cfb"}, {"id": "chicago", "name": "Chicago", "country": "VS", "lat": 41.88, "lon": -87.63, "koppen": "Df", "t": [-4.5, -3.7, 1.4, 7.3, 14.2, 19.9, 23.3, 22.6, 19.2, 12.4, 4.6, -0.4], "p": [52, 62, 67, 109, 135, 120, 103, 93, 82, 108, 64, 61], "koppen_detail": "Dfa"}, {"id": "minneapolis", "name": "Minneapolis", "country": "VS", "lat": 44.98, "lon": -93.27, "koppen": "Df", "t": [-9.6, -7.9, 0.3, 7.1, 14.7, 20.4, 23.4, 22.0, 17.9, 9.9, 1.3, -6.1], "p": [22, 31, 45, 90, 122, 134, 99, 89, 97, 76, 46, 44], "koppen_detail": "Dfa"}, {"id": "moscow", "name": "Moskou", "country": "Rusland", "lat": 55.76, "lon": 37.62, "koppen": "Df", "t": [-9.4, -7.1, -2.9, 5.5, 14.5, 17.5, 20.2, 18.6, 12.4, 5.3, 0.0, -4.0], "p": [36, 31, 33, 41, 60, 65, 66, 62, 62, 47, 46, 47], "koppen_detail": "Dfb"}, {"id": "stockholm", "name": "Stockholm", "country": "Zweden", "lat": 59.33, "lon": 18.07, "koppen": "Df", "t": [-2.5, -1.7, 0.8, 5.4, 10.9, 15.0, 18.2, 16.9, 13.0, 7.5, 3.6, 0.2], "p": [39, 34, 32, 32, 45, 69, 55, 71, 58, 52, 55, 47], "koppen_detail": "Dfb"}, {"id": "montreal", "name": "Montreal", "country": "Canada", "lat": 45.5, "lon": -73.57, "koppen": "Df", "t": [-9.0, -7.7, -2.3, 5.3, 13.7, 18.2, 21.9, 20.7, 16.8, 9.9, 1.9, -4.7], "p": [67, 69, 71, 108, 102, 116, 81, 100, 98, 132, 80, 96], "koppen_detail": "Dfb"}, {"id": "warsaw", "name": "Warschau", "country": "Polen", "lat": 52.23, "lon": 21.01, "koppen": "Df", "t": [-2.6, -1.0, 3.5, 9.5, 14.7, 18.6, 20.0, 19.8, 14.7, 9.0, 5.0, 0.9], "p": [47, 35, 40, 44, 86, 67, 98, 69, 59, 48, 43, 50], "koppen_detail": "Dfb"}];
+  let PLACES = [];
   const KOPPEN_CODES = ["Af", "As", "Aw", "BW", "BS", "Cf", "Cs", "Cw", "Df", "Ds", "Dw", "ET", "EF", "EH"];
   const KOPPEN_HELP = {"Af": "tropisch · F fehlt: veel neerslag, geen droge tijd", "As": "tropisch · S sommertrocken: zomers droog", "Aw": "tropisch · W wintertrocken: winters droog", "BW": "droog · W woestijn: heel weinig regen", "BS": "droog · S steppe: droog, iets meer regen dan woestijn", "Cf": "zeeklimaat · F fehlt: neerslag het hele jaar", "Cs": "zeeklimaat · S sommertrocken: zomers droog", "Cw": "zeeklimaat · W wintertrocken: winters droog", "Df": "landklimaat · F fehlt: neerslag het hele jaar", "Ds": "landklimaat · S sommertrocken: zomers droog", "Dw": "landklimaat · W wintertrocken: winters droog", "ET": "polair · T toendra: warmste maand 0–10°C", "EF": "polair · F permafrost: altijd onder 0°C", "EH": "polair · H hooggebergte"};
   const GROUP_META = {
@@ -511,19 +533,27 @@
     F: { title: "ijs / vorst" },
     H: { title: "hooggebergte" },
   };
-  const ROUND_SIZE = 8;
+  const ROUND_SIZES = [1, 4, 8];
+  const ROUND_SIZE_KEY = "ak-klimaat-round-size";
   const MONTHS = ["J","F","M","A","M","J","J","A","S","O","N","D"];
   const MONTHS_NL = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
   // Zomerhelft: N.H. apr–sep; Z.H. okt–mrt (omgekeerd)
   const SUMMER_NH = new Set([3, 4, 5, 6, 7, 8]);
 
+  function loadRoundSize() {
+    const raw = Number(localStorage.getItem(ROUND_SIZE_KEY) || 8);
+    return ROUND_SIZES.includes(raw) ? raw : 8;
+  }
+
   let state = {
+    roundSize: loadRoundSize(),
     round: [],
     diagramOrder: [],
     activeDiagram: null,
     answers: {}, // diagramPlaceId -> { placeId, group, second, koppen }
     phase: "play",
     usedIds: [],
+    usedCodes: [],
     previewPos: null, // { left, top } px in .map-wrap
     reviewScore: null,
   };
@@ -542,31 +572,72 @@
   function byId(id) { return PLACES.find(p => p.id === id); }
 
   function pickRound(n) {
+    const avoidN = Math.min(PLACES.length - 1, Math.max(24, Math.floor(PLACES.length * 0.35)));
+    const avoid = new Set(state.usedIds.slice(-avoidN));
+    const recentCodes = new Set(state.usedCodes.slice(-(n === 1 ? 8 : 16)));
+    const picked = [];
+    const pickedIds = new Set();
+
+    function scorePlace(p) {
+      let s = 0;
+      if (avoid.has(p.id)) s += 5;
+      if (recentCodes.has(p.koppen)) s += 2;
+      if (picked.some(x => x.koppen === p.koppen)) s += 3;
+      if (picked.some(x => x.koppen[0] === p.koppen[0])) s += 1;
+      return s;
+    }
+
+    function takeBest(pool, count) {
+      const avail = pool.filter(p => !pickedIds.has(p.id));
+      for (let k = 0; k < count; k++) {
+        if (!avail.length) break;
+        avail.sort((a, b) => scorePlace(a) - scorePlace(b) || Math.random() - 0.5);
+        const p = avail.shift();
+        picked.push(p);
+        pickedIds.add(p.id);
+      }
+    }
+
+    if (n <= 1) {
+      takeBest(PLACES, 1);
+      return picked;
+    }
+
+    if (n <= 4) {
+      // Lichte spreiding: bij voorkeur verschillende hoofdgroepen, geen harde quota.
+      const by = {};
+      for (const p of PLACES) (by[p.koppen[0]] ||= []).push(p);
+      const groups = shuffle(Object.keys(by));
+      for (const g of groups) {
+        if (picked.length >= n) break;
+        takeBest(by[g], 1);
+      }
+      if (picked.length < n) takeBest(PLACES, n - picked.length);
+      return shuffle(picked.slice(0, n));
+    }
+
+    // n = 8: evenwichtiger over A–E
     const by = {};
     for (const p of PLACES) (by[p.koppen[0]] ||= []).push(p);
     const quota = { A: 2, B: 2, C: 2, D: 1, E: 1 };
-    const picked = [];
-    const pickedIds = new Set();
-    const avoid = new Set(state.usedIds.slice(-24));
-
-    function takeFrom(group, count) {
-      const pool = shuffle((by[group] || []).filter(p => !pickedIds.has(p.id)));
-      pool.sort((a, b) => (avoid.has(a.id) ? 1 : 0) - (avoid.has(b.id) ? 1 : 0));
-      for (const p of pool) {
-        if (count <= 0) break;
-        picked.push(p); pickedIds.add(p.id); count--;
-      }
-    }
-    for (const [g, c] of Object.entries(quota)) takeFrom(g, c);
-    if (picked.length < n) {
-      const rest = shuffle(PLACES.filter(p => !pickedIds.has(p.id)));
-      rest.sort((a, b) => (avoid.has(a.id) ? 1 : 0) - (avoid.has(b.id) ? 1 : 0));
-      for (const p of rest) {
-        if (picked.length >= n) break;
-        picked.push(p); pickedIds.add(p.id);
-      }
-    }
+    for (const [g, c] of Object.entries(quota)) takeBest(by[g] || [], c);
+    if (picked.length < n) takeBest(PLACES, n - picked.length);
     return shuffle(picked.slice(0, n));
+  }
+
+  function syncSizePicker() {
+    document.querySelectorAll("[data-round-size]").forEach(btn => {
+      const v = Number(btn.getAttribute("data-round-size"));
+      btn.classList.toggle("active", v === state.roundSize);
+    });
+  }
+
+  function setRoundSize(n, { restart = true } = {}) {
+    if (!ROUND_SIZES.includes(n)) return;
+    state.roundSize = n;
+    localStorage.setItem(ROUND_SIZE_KEY, String(n));
+    syncSizePicker();
+    if (restart && PLACES.length) startRound();
   }
 
   function gradeDiagram(pid) {
@@ -1308,10 +1379,12 @@
   }
 
   function startRound() {
+    if (!PLACES.length) return;
     state.phase = "play";
     state.answers = {};
-    state.round = pickRound(ROUND_SIZE);
+    state.round = pickRound(state.roundSize);
     state.usedIds = state.usedIds.concat(state.round.map(p => p.id));
+    state.usedCodes = state.usedCodes.concat(state.round.map(p => p.koppen));
     state.diagramOrder = shuffle(state.round.map(p => p.id));
     state.activeDiagram = state.diagramOrder[0] || null;
     state.previewPos = null;
@@ -1322,9 +1395,11 @@
     document.getElementById("btn-check").classList.remove("hidden");
     document.getElementById("btn-new").classList.add("hidden");
     document.getElementById("map-hint").textContent =
-      "Diagram → plaats → Köppen in 2 stappen (A–E, daarna f/s/w…). Evenaar = N.H./Z.H. Preview verslepen via de kop.";
+      state.roundSize === 1
+        ? "Eén diagram: plaats kiezen → Köppen in 2 stappen. Evenaar = N.H./Z.H."
+        : "Diagram → plaats → Köppen in 2 stappen (A–E, daarna f/s/w…). Evenaar = N.H./Z.H. Preview verslepen via de kop.";
     document.getElementById("round-meta").textContent =
-      `Ronde: ${state.round.length} plekken · pool ${PLACES.length}`;
+      `Ronde: ${state.round.length} · pool ${PLACES.length}`;
 
     renderMap();
     renderDiagrams();
@@ -1572,9 +1647,31 @@
   document.getElementById("btn-check").addEventListener("click", checkRound);
   document.getElementById("btn-new").addEventListener("click", startRound);
   document.getElementById("btn-new-2").addEventListener("click", startRound);
+  document.querySelectorAll("[data-round-size]").forEach(btn => {
+    btn.addEventListener("click", () => setRoundSize(Number(btn.getAttribute("data-round-size"))));
+  });
 
-  renderLegend();
-  startRound();
+  async function boot() {
+    syncSizePicker();
+    renderLegend();
+    const meta = document.getElementById("round-meta");
+    meta.textContent = "Plaatsen laden…";
+    try {
+      const res = await fetch("data/klimaat-places.json", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      PLACES = data.places || [];
+      if (!PLACES.length) throw new Error("lege pool");
+      startRound();
+    } catch (err) {
+      console.error(err);
+      meta.textContent = "Kon plaatsen niet laden.";
+      document.getElementById("map-preview").textContent =
+        "Fout bij laden van data/klimaat-places.json.";
+    }
+  }
+
+  boot();
   </script>
 </body>
 </html>
