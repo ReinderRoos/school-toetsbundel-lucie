@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Klimaatdiagrammen · Köppen (H3.5)</title>
+  <link rel="stylesheet" href="../../assets/lesson.css" />
+  <style>
+    :root {
+      --map-ocean: #b9d6e3;
+      --map-land: #e8e0d2;
+      --map-line: #c4b8a4;
+      --dot: #0b5f6b;
+      --dot-active: #c45c26;
+      --panel: #fffef9;
+    }
+    body { background: var(--paper); }
+    .wrap-wide {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.25rem 1.25rem 3rem;
+    }
+    header.site { margin-bottom: 1rem; }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 0.6rem 1rem;
+      align-items: center; margin: 0.75rem 0 1rem;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.88rem;
+    }
+    .toolbar button, .diagram-card button, .review-actions button, .map-preview button {
+      font-family: inherit; font-size: 0.88rem;
+      border: 1px solid var(--line); background: var(--panel);
+      color: var(--ink); padding: 0.4rem 0.75rem; border-radius: 6px;
+      cursor: pointer;
+    }
+    .toolbar button.primary, .review-actions button.primary {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .toolbar button:hover, .diagram-card button:hover { filter: brightness(0.97); }
+    .toolbar .meta { color: var(--muted); }
+    .play {
+      display: grid;
+      grid-template-columns: minmax(340px, 1.1fr) minmax(380px, 1.15fr);
+      gap: 1rem;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .play { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 901px) {
+      .map-panel { position: sticky; top: 0.75rem; align-self: start; }
+    }
+    .map-panel, .diagrams-panel, .review-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.75rem;
+    }
+    .map-panel h2, .diagrams-panel h2, .review-panel h2 {
+      margin: 0 0 0.5rem; font-size: 1rem;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    .map-hint, .diag-hint, .howto {
+      margin: 0 0 0.6rem; color: var(--muted); font-size: 0.85rem;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    .howto { font-size: 0.92rem; max-width: none; }
+    .map-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2 / 1;
+      background: var(--map-ocean);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--map-line);
+    }
+    .map-wrap img.basemap {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: fill; pointer-events: none; user-select: none;
+    }
+    .map-equator {
+      position: absolute;
+      left: 0; right: 0;
+      top: 50%;
+      z-index: 1;
+      height: 0;
+      border-top: 2px dashed rgba(11, 95, 107, 0.9);
+      pointer-events: none;
+    }
+    .map-equator-label {
+      position: absolute;
+      left: 0.45rem;
+      top: 0.2rem;
+      transform: translateY(0);
+      background: rgba(255,254,249,0.92);
+      border: 1px solid rgba(11, 95, 107, 0.35);
+      border-radius: 3px;
+      padding: 0.05rem 0.28rem;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #0b5f6b;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .map-hemi {
+      position: absolute;
+      right: 0.4rem;
+      z-index: 1;
+      pointer-events: none;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: rgba(11, 95, 107, 0.75);
+      background: rgba(255,254,249,0.85);
+      padding: 0.05rem 0.25rem;
+      border-radius: 3px;
+    }
+    .map-hemi.nh { top: calc(50% - 1.35rem); }
+    .map-hemi.sh { top: calc(50% + 0.35rem); }
+    .map-marker {
+      position: absolute;
+      width: 0.72rem;
+      height: 0.72rem;
+      transform: translate(-50%, -100%);
+      z-index: 2;
+      border: 0; background: transparent; padding: 0; cursor: pointer;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    .map-marker .pin {
+      position: absolute; inset: 0;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background: var(--dot);
+      border: 2px solid #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.3);
+    }
+    .map-marker .label {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 0.22rem);
+      transform: translateX(-50%);
+      background: rgba(255,254,249,0.95);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.05rem 0.28rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+      max-width: 7.5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+      pointer-events: none;
+    }
+    .map-marker:hover .pin, .map-marker:focus-visible .pin { background: var(--dot-active); }
+    .map-marker:focus-visible { outline: none; }
+    .map-marker:focus-visible .label { outline: 2px solid var(--dot-active); }
+    .map-marker.taken .pin { background: #4a7c82; }
+    .map-marker.taken .label { border-color: var(--accent); }
+    .map-marker.active-target .pin { background: var(--dot-active); }
+    .map-marker.active-target .label {
+      background: var(--dot-active); color: #fff; border-color: var(--dot-active);
+    }
+    .map-marker.reveal-ok .pin { background: var(--ok); }
+    .map-marker.reveal-bad .pin { background: var(--bad); }
+    .map-marker.review-focus .pin {
+      box-shadow: 0 0 0 3px rgba(196,92,38,.45), 0 1px 3px rgba(0,0,0,.3);
+    }
+    .map-marker.review-focus .label {
+      background: var(--dot-active); color: #fff; border-color: var(--dot-active);
+    }
+
+    .map-preview {
+      position: absolute;
+      left: 0.45rem;
+      top: auto;
+      bottom: 0.45rem;
+      width: min(48%, 270px);
+      z-index: 4;
+      background: rgba(255,254,249,0.97);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.4rem 0.45rem 0.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,.12);
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.72rem;
+    }
+    .map-preview.empty { color: var(--muted); padding: 0.55rem 0.6rem; }
+    .map-preview.status-ok { border-color: var(--ok); box-shadow: 0 0 0 2px rgba(27,107,58,.2); }
+    .map-preview.status-partial { border-color: #b45309; box-shadow: 0 0 0 2px rgba(180,83,9,.2); }
+    .map-preview.status-bad { border-color: var(--bad); box-shadow: 0 0 0 2px rgba(139,30,30,.2); }
+    .map-preview-head {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.3rem; margin-bottom: 0.15rem; font-weight: 600;
+      cursor: grab; user-select: none;
+    }
+    .map-preview.dragging .map-preview-head { cursor: grabbing; }
+    .map-preview-nav {
+      display: flex; align-items: center; gap: 0.25rem;
+    }
+    .map-preview-nav button {
+      padding: 0.15rem 0.4rem; font-size: 0.72rem; min-width: 1.6rem;
+      cursor: pointer;
+    }
+    .map-preview-nav .nav-label { font-weight: 600; min-width: 4.2rem; text-align: center; }
+    .map-preview svg { width: 100%; height: auto; display: block; }
+    .map-preview .guess-block {
+      margin-top: 0.4rem;
+      padding-top: 0.4rem;
+      border-top: 1px dashed var(--line);
+    }
+    .map-preview .guess-block label {
+      display: block; margin-bottom: 0.25rem; font-weight: 600;
+    }
+    .map-preview select, .assign-row select {
+      font: inherit; padding: 0.2rem 0.3rem;
+      border: 1px solid var(--line); border-radius: 4px; background: #fff;
+      max-width: 100%;
+    }
+    .map-preview .place-row { margin-top: 0.3rem; }
+    .map-preview .place-row label { font-weight: 600; display: block; margin-bottom: 0.15rem; }
+    .map-preview .review-status {
+      margin-top: 0.35rem; padding-top: 0.35rem;
+      border-top: 1px dashed var(--line);
+      display: grid; gap: 0.15rem;
+    }
+    .guess-block.ready {
+      background: var(--accent-soft);
+      margin-left: -0.45rem; margin-right: -0.45rem; margin-bottom: -0.5rem;
+      padding: 0.45rem 0.45rem 0.55rem;
+      border-top: 1px solid var(--line);
+      border-radius: 0 0 8px 8px;
+    }
+    .guess-block.locked { opacity: 0.55; }
+
+    .map-explain {
+      position: absolute;
+      z-index: 5;
+      width: min(54%, 290px);
+      background: rgba(255,254,249,0.97);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.4rem 0.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,.14);
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.7rem;
+      line-height: 1.35;
+      pointer-events: none;
+    }
+    .map-explain.status-ok { border-left: 4px solid var(--ok); }
+    .map-explain.status-partial { border-left: 4px solid #b45309; }
+    .map-explain.status-bad { border-left: 4px solid var(--bad); }
+    .map-explain strong { display: block; margin-bottom: 0.2rem; font-size: 0.74rem; }
+    .map-explain p { margin: 0.15rem 0; max-width: none; }
+    .map-explain .why, .review-item .why { color: var(--muted); }
+    .map-explain .why-list, .review-item .why-list {
+      margin: 0.2rem 0 0;
+      padding-left: 1rem;
+      color: var(--muted);
+    }
+    .map-explain .why-list li, .review-item .why-list li { margin: 0.12rem 0; }
+    .map-explain .row-ok, .map-preview .review-status .row-ok { color: var(--ok); font-weight: 600; }
+    .map-explain .row-bad, .map-preview .review-status .row-bad { color: var(--bad); font-weight: 600; }
+    .map-preview .review-status .row-partial { color: #b45309; font-weight: 600; }
+    .diagrams-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+    .diagram-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.45rem 0.5rem 0.55rem;
+      background: #fff;
+    }
+    .diagram-card.active {
+      border-color: var(--dot-active);
+      box-shadow: 0 0 0 2px rgba(196,92,38,.25);
+    }
+    .diagram-card.ok { border-color: var(--ok); }
+    .diagram-card.partial { border-color: #b45309; }
+    .diagram-card.bad { border-color: var(--bad); }
+    .diagram-card.partial.active { box-shadow: 0 0 0 2px rgba(180,83,9,.25); }
+    .diagram-card.ok.active { box-shadow: 0 0 0 2px rgba(27,107,58,.25); }
+    .diagram-card.bad.active { box-shadow: 0 0 0 2px rgba(139,30,30,.25); }
+    .diagram-head {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.4rem; margin-bottom: 0.2rem;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.8rem;
+    }
+    .diagram-head strong { font-size: 0.9rem; }
+    .diagram-card svg { width: 100%; height: auto; display: block; }
+    .assign-row {
+      display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
+      margin-top: 0.35rem;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.78rem;
+    }
+    .assign-row .pill, .map-preview .pill {
+      display: inline-flex; align-items: center;
+      background: var(--accent-soft); padding: 0.15rem 0.45rem; border-radius: 999px;
+    }
+    option.place-taken { color: #6b4a0b; font-style: italic; }
+    .hidden { display: none !important; }
+    .review-panel { margin-top: 1rem; }
+    .review-list { display: grid; gap: 0.75rem; }
+    .review-item {
+      border: 1px solid var(--line); border-radius: 8px; padding: 0.65rem 0.75rem;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif; font-size: 0.9rem;
+    }
+    .review-item.ok { border-left: 4px solid var(--ok); }
+    .review-item.partial { border-left: 4px solid #b45309; }
+    .review-item.bad { border-left: 4px solid var(--bad); }
+    .review-item h3 { margin: 0 0 0.35rem; font-size: 0.98rem; }
+    .review-item p { margin: 0.25rem 0; max-width: none; }
+    .review-item .why { color: var(--muted); }
+    .score-line {
+      font-size: 1.1rem; font-weight: 600; margin: 0 0 0.75rem;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    .legend-codes {
+      display: flex; flex-wrap: wrap; gap: 0.35rem;
+      margin: 0.5rem 0 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.75rem; color: var(--muted);
+    }
+    .legend-codes code {
+      background: var(--accent-soft); color: var(--ink);
+      padding: 0.1rem 0.35rem; border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap-wide">
+    <header class="site">
+      <p class="eyebrow"><a href="../../index.html">Lucie</a> · AK · Klimaat · Köppen H3.5</p>
+      <h1>Klimaatdiagrammen koppelen</h1>
+      <p class="lede howto">Pool van 53 plekken. Elke ronde: <strong>8</strong> diagrammen → kies plaatsnaam → kies Köppen (boekcodes). Na nakijken eerst uitleg.</p>
+    </header>
+
+    <div class="toolbar" id="toolbar">
+      <button type="button" class="primary" id="btn-check">Nakijken</button>
+      <button type="button" id="btn-new" class="hidden">Nieuwe ronde</button>
+      <span class="meta" id="round-meta"></span>
+    </div>
+
+    <div class="play" id="play">
+      <section class="map-panel" aria-label="Wereldkaart">
+        <h2>Wereldkaart</h2>
+        <p class="map-hint" id="map-hint">Diagram selecteren (of Vorige/Volgende) → plaats kiezen → Köppen kiezen. Evenaar = N.H. vs Z.H. (zomer/winter omgekeerd). Preview verslepen via de kop.</p>
+        <div class="map-wrap" id="map">
+          <img class="basemap" src="../../assets/world-equirect.svg" alt="" width="1000" height="500" />
+          <div class="map-equator" aria-hidden="true">
+            <span class="map-equator-label">Evenaar (0°)</span>
+          </div>
+          <span class="map-hemi nh" aria-hidden="true">N.H.</span>
+          <span class="map-hemi sh" aria-hidden="true">Z.H.</span>
+          <div class="map-preview empty" id="map-preview">Nog geen diagram geselecteerd.</div>
+          <div class="map-explain hidden" id="map-explain" aria-live="polite"></div>
+        </div>
+        <p class="legend-codes" id="code-legend"></p>
+      </section>
+
+      <section class="diagrams-panel" aria-label="Klimaatdiagrammen">
+        <h2>Diagrammen</h2>
+        <p class="diag-hint">Temperatuurlijn (°C) + neerslagstaven (mm). Zelfde schaal overal.</p>
+        <div class="diagrams-grid" id="diagrams"></div>
+      </section>
+    </div>
+
+    <section class="review-panel hidden" id="review" aria-live="polite">
+      <h2>Naslag bij deze ronde</h2>
+      <p class="map-hint" style="margin-top:0">Doorloop de diagrammen op de kaart met ‹ ›. Hieronder een korte lijst.</p>
+      <p class="score-line" id="score-line"></p>
+      <div class="review-list" id="review-list"></div>
+      <div class="review-actions" style="margin-top:1rem">
+        <button type="button" class="primary" id="btn-new-2">Nieuwe ronde</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+  const PLACES = [{"id": "singapore", "name": "Singapore", "country": "Singapore", "lat": 1.35, "lon": 103.82, "koppen": "Af", "t": [25.7, 26.1, 26.6, 26.9, 27.2, 27.2, 26.8, 26.8, 26.7, 26.6, 26.1, 25.8], "p": [206, 118, 203, 266, 238, 188, 175, 166, 177, 256, 348, 325], "koppen_detail": "Af"}, {"id": "belem", "name": "Belém", "country": "Brazilië", "lat": -1.45, "lon": -48.5, "koppen": "Af", "t": [26.3, 26.1, 26.3, 26.5, 26.8, 26.9, 26.8, 27.1, 27.3, 27.3, 27.4, 27.0], "p": [394, 438, 506, 466, 324, 206, 156, 129, 120, 136, 151, 284], "koppen_detail": "Af", "source_note": "INMET 1991–2020 (Wikipedia climate table)"}, {"id": "kisangani", "name": "Kisangani", "country": "DR Congo", "lat": 0.52, "lon": 25.19, "koppen": "Aw", "t": [26.1, 26.6, 26.1, 25.7, 25.5, 25.1, 24.9, 24.6, 24.7, 24.7, 24.7, 25.2], "p": [58, 89, 143, 142, 114, 86, 94, 140, 161, 174, 173, 93], "koppen_detail": "Am", "source_note": "Open-Meteo; driest <60 → Am/Aw (boek Aw)"}, {"id": "kualalumpur", "name": "Kuala Lumpur", "country": "Maleisië", "lat": 3.14, "lon": 101.69, "koppen": "Af", "t": [25.5, 26.2, 26.4, 26.3, 26.6, 26.6, 26.3, 26.3, 26.1, 26.0, 25.4, 25.4], "p": [207, 153, 250, 304, 216, 169, 182, 203, 233, 287, 381, 265], "koppen_detail": "Af"}, {"id": "mumbai", "name": "Mumbai", "country": "India", "lat": 19.08, "lon": 72.88, "koppen": "Aw", "t": [23.8, 24.7, 26.8, 28.3, 29.4, 28.0, 26.5, 26.2, 26.6, 27.7, 27.1, 25.1], "p": [0, 1, 1, 0, 14, 454, 656, 505, 318, 70, 10, 4], "koppen_detail": "Am"}, {"id": "miami", "name": "Miami", "country": "VS", "lat": 25.76, "lon": -80.19, "koppen": "Aw", "t": [20.4, 21.5, 22.4, 24.2, 25.6, 27.1, 27.9, 28.0, 27.3, 25.9, 23.5, 22.0], "p": [46, 41, 47, 54, 113, 154, 124, 148, 160, 110, 53, 39], "koppen_detail": "Am"}, {"id": "beijing", "name": "Peking", "country": "China", "lat": 39.9, "lon": 116.4, "koppen": "Dw", "t": [-3.5, -0.4, 6.4, 14.4, 21.5, 25.7, 27.0, 25.5, 20.8, 13.3, 4.0, -2.5], "p": [2, 6, 10, 19, 31, 79, 152, 112, 54, 32, 16, 3], "koppen_detail": "Dwa"}, {"id": "seoul", "name": "Seoul", "country": "Zuid-Korea", "lat": 37.57, "lon": 126.98, "koppen": "Dw", "t": [-3.3, -0.5, 4.5, 10.8, 16.8, 21.7, 24.3, 25.1, 20.5, 13.8, 6.1, -1.3], "p": [19, 28, 36, 74, 91, 117, 350, 253, 114, 50, 45, 22], "koppen_detail": "Dwa"}, {"id": "nuuk", "name": "Nuuk", "country": "Groenland", "lat": 64.18, "lon": -51.72, "koppen": "ET", "t": [-14.1, -13.4, -11.1, -5.2, 0.3, 6.0, 9.0, 8.4, 4.0, -2.5, -8.8, -11.9], "p": [50, 44, 45, 61, 65, 67, 64, 72, 106, 78, 86, 69], "koppen_detail": "ET"}, {"id": "longyearbyen", "name": "Longyearbyen", "country": "Spitsbergen", "lat": 78.22, "lon": 15.65, "koppen": "ET", "t": [-11.9, -12.6, -14.2, -9.4, -2.4, 2.6, 7.0, 5.6, 1.2, -4.9, -8.7, -10.7], "p": [42, 37, 36, 27, 23, 18, 34, 40, 48, 45, 48, 48], "koppen_detail": "ET"}, {"id": "mcmurdo", "name": "McMurdo", "country": "Antarctica", "lat": -77.85, "lon": 166.67, "koppen": "EF", "t": [-5.7, -12.0, -20.2, -24.6, -24.8, -26.2, -28.6, -28.4, -26.1, -20.4, -12.4, -5.9], "p": [8, 7, 5, 9, 7, 8, 5, 9, 6, 6, 4, 8], "koppen_detail": "EF"}, {"id": "chittagong", "name": "Chittagong", "country": "Bangladesh", "lat": 22.36, "lon": 91.8, "koppen": "Aw", "t": [19.4, 22.2, 25.5, 27.6, 28.1, 27.5, 26.8, 26.9, 27.1, 26.4, 23.6, 20.5], "p": [4, 7, 50, 108, 249, 503, 580, 421, 313, 227, 28, 15], "koppen_detail": "Am"}, {"id": "manaus", "name": "Manaus", "country": "Brazilië", "lat": -3.12, "lon": -60.02, "koppen": "Aw", "t": [26.3, 26.1, 26.3, 26.1, 26.2, 26.4, 26.6, 27.7, 28.2, 28.1, 27.4, 26.7], "p": [280, 288, 350, 345, 254, 140, 70, 59, 87, 124, 179, 276], "koppen_detail": "Am"}, {"id": "accra", "name": "Accra", "country": "Ghana", "lat": 5.6, "lon": -0.19, "koppen": "Aw", "t": [27.2, 27.6, 28.0, 27.8, 27.0, 25.5, 24.6, 24.3, 24.9, 25.9, 26.9, 27.2], "p": [22, 45, 54, 69, 121, 141, 74, 54, 101, 113, 52, 28], "koppen_detail": "Aw"}, {"id": "brasilia", "name": "Brasília", "country": "Brazilië", "lat": -15.79, "lon": -47.88, "koppen": "Aw", "t": [22.4, 22.5, 22.1, 21.9, 21.1, 20.3, 20.1, 21.7, 24.0, 24.0, 22.1, 22.3], "p": [185, 153, 192, 99, 18, 5, 0, 3, 17, 108, 232, 213], "koppen_detail": "Aw"}, {"id": "darwin", "name": "Darwin", "country": "Australië", "lat": -12.46, "lon": 130.84, "koppen": "Aw", "t": [27.8, 27.8, 27.9, 27.8, 26.8, 24.9, 25.0, 25.4, 27.5, 28.8, 29.1, 28.7], "p": [519, 340, 273, 93, 24, 1, 4, 1, 22, 76, 166, 325], "koppen_detail": "Aw"}, {"id": "bangkok", "name": "Bangkok", "country": "Thailand", "lat": 13.76, "lon": 100.5, "koppen": "Aw", "t": [26.0, 27.6, 28.8, 30.1, 29.8, 28.7, 28.0, 27.8, 27.4, 27.1, 27.2, 26.1], "p": [26, 16, 39, 66, 130, 134, 146, 153, 278, 191, 51, 15], "koppen_detail": "Aw"}, {"id": "bamako", "name": "Bamako", "country": "Mali", "lat": 12.64, "lon": -8.0, "koppen": "Aw", "t": [24.9, 27.7, 31.1, 32.9, 32.0, 29.5, 26.4, 25.4, 26.0, 27.6, 28.0, 25.2], "p": [1, 0, 1, 4, 29, 87, 166, 223, 141, 43, 1, 0], "koppen_detail": "Aw"}, {"id": "caracas", "name": "Caracas", "country": "Venezuela", "lat": 10.48, "lon": -66.9, "koppen": "Aw", "t": [21.5, 22.0, 22.6, 22.9, 23.2, 23.2, 23.0, 23.1, 23.4, 23.0, 22.3, 21.8], "p": [26, 21, 58, 150, 147, 98, 110, 151, 159, 193, 199, 77], "koppen_detail": "Aw"}, {"id": "cairo", "name": "Caïro", "country": "Egypte", "lat": 30.04, "lon": 31.24, "koppen": "BW", "t": [13.7, 15.5, 18.3, 21.8, 26.0, 28.6, 29.5, 29.9, 27.9, 24.5, 19.9, 15.5], "p": [4, 4, 2, 2, 0, 0, 0, 0, 0, 2, 3, 2], "koppen_detail": "BWh"}, {"id": "riyadh", "name": "Riyad", "country": "Saoedi-Arabië", "lat": 24.71, "lon": 46.68, "koppen": "BW", "t": [14.8, 17.1, 21.5, 26.7, 32.2, 35.0, 36.5, 36.2, 33.1, 27.9, 20.0, 15.0], "p": [4, 10, 11, 18, 4, 0, 0, 0, 0, 1, 21, 7], "koppen_detail": "BWh"}, {"id": "alice", "name": "Alice Springs", "country": "Australië", "lat": -23.7, "lon": 133.88, "koppen": "BW", "t": [29.9, 29.0, 26.5, 22.3, 16.8, 12.7, 13.0, 15.5, 20.2, 24.9, 27.4, 29.5], "p": [60, 36, 20, 7, 18, 5, 13, 5, 13, 11, 16, 33], "koppen_detail": "BWh"}, {"id": "phoenix", "name": "Phoenix", "country": "VS", "lat": 33.45, "lon": -112.07, "koppen": "BW", "t": [11.9, 13.9, 18.7, 23.2, 26.7, 33.7, 34.8, 34.2, 30.9, 24.3, 17.3, 11.7], "p": [33, 26, 16, 4, 3, 4, 23, 28, 28, 29, 21, 31], "koppen_detail": "BWh"}, {"id": "khartoum", "name": "Khartoem", "country": "Soedan", "lat": 15.5, "lon": 32.56, "koppen": "BW", "t": [23.5, 26.4, 29.3, 32.2, 34.6, 34.6, 33.0, 31.6, 33.3, 32.8, 28.2, 24.4], "p": [0, 0, 0, 0, 3, 2, 11, 24, 3, 4, 0, 0], "koppen_detail": "BWh"}, {"id": "lasvegas", "name": "Las Vegas", "country": "VS", "lat": 36.17, "lon": -115.14, "koppen": "BW", "t": [8.8, 11.0, 15.9, 20.0, 23.5, 31.2, 33.5, 32.4, 28.1, 20.7, 13.7, 8.3], "p": [24, 17, 10, 6, 7, 0, 10, 9, 10, 10, 11, 25], "koppen_detail": "BWh"}, {"id": "dakar", "name": "Dakar", "country": "Senegal", "lat": 14.72, "lon": -17.47, "koppen": "BS", "t": [22.7, 21.9, 22.1, 22.0, 23.1, 25.1, 26.8, 27.3, 27.6, 28.0, 26.5, 24.3], "p": [0, 0, 0, 0, 0, 3, 24, 153, 107, 18, 1, 0], "koppen_detail": "BSh"}, {"id": "niamey", "name": "Niamey", "country": "Niger", "lat": 13.51, "lon": 2.11, "koppen": "BS", "t": [23.4, 26.8, 30.2, 33.5, 34.4, 32.6, 29.8, 27.7, 29.3, 31.0, 28.3, 24.1], "p": [0, 0, 1, 2, 8, 24, 60, 150, 44, 8, 0, 0], "koppen_detail": "BSh"}, {"id": "denver", "name": "Denver", "country": "VS", "lat": 39.74, "lon": -104.99, "koppen": "BS", "t": [-3.4, -2.4, 3.4, 7.9, 12.1, 20.5, 23.0, 22.1, 18.5, 9.9, 2.5, -2.9], "p": [23, 30, 43, 64, 94, 39, 49, 30, 35, 39, 24, 21], "koppen_detail": "BSk"}, {"id": "ulan", "name": "Ulaanbaatar", "country": "Mongolië", "lat": 47.92, "lon": 106.92, "koppen": "BS", "t": [-19.9, -15.8, -5.2, 2.8, 9.4, 16.1, 18.7, 16.0, 9.6, 1.1, -9.5, -16.8], "p": [1, 3, 8, 14, 35, 48, 68, 66, 29, 13, 9, 2], "koppen_detail": "BSk"}, {"id": "tehran", "name": "Teheran", "country": "Iran", "lat": 35.69, "lon": 51.39, "koppen": "BS", "t": [2.4, 3.5, 9.3, 15.3, 22.4, 28.8, 31.7, 29.9, 25.5, 18.3, 8.6, 4.1], "p": [44, 39, 57, 41, 17, 3, 2, 7, 3, 28, 48, 38], "koppen_detail": "BSk"}, {"id": "athens", "name": "Athene", "country": "Griekenland", "lat": 37.98, "lon": 23.73, "koppen": "Cs", "t": [8.6, 10.0, 12.0, 15.9, 20.5, 25.1, 28.0, 27.9, 24.0, 18.6, 14.6, 10.1], "p": [55, 68, 48, 24, 26, 26, 7, 3, 23, 31, 55, 67], "koppen_detail": "Csa"}, {"id": "rome", "name": "Rome", "country": "Italië", "lat": 41.9, "lon": 12.5, "koppen": "Cs", "t": [7.4, 8.0, 10.7, 14.2, 17.2, 22.5, 25.5, 25.8, 21.4, 17.2, 12.8, 8.4], "p": [80, 99, 94, 67, 78, 32, 29, 17, 77, 108, 157, 70], "koppen_detail": "Csa"}, {"id": "perth", "name": "Perth", "country": "Australië", "lat": -31.95, "lon": 115.86, "koppen": "Cs", "t": [25.0, 25.0, 23.2, 19.8, 16.1, 14.0, 13.0, 13.7, 14.7, 17.5, 20.6, 23.0], "p": [27, 15, 23, 32, 61, 76, 95, 94, 53, 28, 15, 19], "koppen_detail": "Csa"}, {"id": "santiago", "name": "Santiago", "country": "Chili", "lat": -33.45, "lon": -70.67, "koppen": "Cs", "t": [21.9, 21.6, 20.2, 16.5, 13.0, 9.7, 8.9, 10.5, 12.4, 14.5, 18.1, 20.2], "p": [3, 5, 2, 30, 46, 67, 58, 58, 47, 42, 18, 9], "koppen_detail": "Csb"}, {"id": "losangeles", "name": "Los Angeles", "country": "VS", "lat": 34.05, "lon": -118.24, "koppen": "Cs", "t": [12.9, 13.2, 15.1, 17.0, 18.3, 21.2, 23.8, 24.6, 23.8, 20.5, 16.2, 12.5], "p": [68, 50, 44, 13, 9, 1, 4, 1, 4, 14, 24, 63], "koppen_detail": "Csa"}, {"id": "capetown", "name": "Kaapstad", "country": "Zuid-Afrika", "lat": -33.92, "lon": 18.42, "koppen": "Cs", "t": [21.6, 21.5, 20.1, 17.8, 15.4, 13.2, 12.8, 13.1, 14.4, 16.5, 18.0, 20.4], "p": [11, 10, 17, 32, 56, 101, 74, 74, 39, 31, 28, 16], "koppen_detail": "Csb"}, {"id": "newyork", "name": "New York", "country": "VS", "lat": 40.71, "lon": -74.01, "koppen": "Cf", "t": [-1.0, -0.1, 4.1, 10.6, 16.5, 21.3, 25.0, 23.5, 20.4, 14.2, 7.1, 3.1], "p": [81, 93, 109, 81, 95, 107, 113, 103, 91, 104, 75, 107], "koppen_detail": "Cfa"}, {"id": "shanghai", "name": "Shanghai", "country": "China", "lat": 31.23, "lon": 121.47, "koppen": "Cf", "t": [4.8, 5.9, 9.9, 15.2, 20.2, 23.5, 28.2, 28.1, 23.9, 18.9, 13.7, 6.9], "p": [48, 66, 80, 95, 124, 272, 156, 147, 121, 70, 62, 53], "koppen_detail": "Cfa"}, {"id": "buenosaires", "name": "Buenos Aires", "country": "Argentinië", "lat": -34.6, "lon": -58.38, "koppen": "Cf", "t": [24.4, 23.5, 20.7, 18.0, 14.6, 11.4, 10.4, 12.1, 14.2, 16.6, 20.2, 23.3], "p": [88, 118, 83, 95, 89, 56, 90, 69, 88, 116, 88, 85], "koppen_detail": "Cfa"}, {"id": "sydney", "name": "Sydney", "country": "Australië", "lat": -33.87, "lon": 151.21, "koppen": "Cf", "t": [22.7, 22.4, 21.2, 18.6, 15.3, 13.1, 12.2, 12.9, 15.4, 17.8, 19.6, 21.3], "p": [76, 86, 97, 65, 33, 74, 28, 38, 44, 49, 84, 53], "koppen_detail": "Cfa"}, {"id": "atlanta", "name": "Atlanta", "country": "VS", "lat": 33.75, "lon": -84.39, "koppen": "Cf", "t": [5.2, 8.0, 11.4, 16.6, 21.1, 24.8, 26.2, 25.6, 23.5, 17.6, 11.0, 8.3], "p": [112, 125, 106, 108, 99, 104, 117, 114, 73, 74, 97, 130], "koppen_detail": "Cfa"}, {"id": "amsterdam", "name": "Amsterdam", "country": "Nederland", "lat": 52.37, "lon": 4.9, "koppen": "Cf", "t": [3.5, 3.4, 6.0, 9.4, 12.8, 15.8, 18.1, 17.6, 15.1, 11.9, 7.3, 5.4], "p": [68, 53, 52, 48, 58, 72, 84, 91, 70, 74, 59, 77], "koppen_detail": "Cfb"}, {"id": "london", "name": "Londen", "country": "VK", "lat": 51.51, "lon": -0.13, "koppen": "Cf", "t": [4.3, 4.7, 6.6, 9.4, 12.5, 15.7, 18.1, 17.1, 14.8, 11.9, 7.7, 5.8], "p": [61, 48, 44, 44, 54, 60, 55, 72, 46, 58, 63, 62], "koppen_detail": "Cfb"}, {"id": "auckland", "name": "Auckland", "country": "Nieuw-Zeeland", "lat": -36.85, "lon": 174.76, "koppen": "Cf", "t": [19.6, 20.2, 18.9, 16.9, 14.6, 12.6, 11.4, 11.7, 12.7, 14.0, 15.8, 18.2], "p": [79, 69, 83, 81, 100, 95, 106, 109, 103, 68, 68, 92], "koppen_detail": "Cfb"}, {"id": "vancouver", "name": "Vancouver", "country": "Canada", "lat": 49.28, "lon": -123.12, "koppen": "Cf", "t": [4.1, 3.9, 6.2, 8.8, 12.9, 15.5, 18.6, 19.2, 15.7, 10.9, 6.4, 3.5], "p": [251, 181, 272, 169, 93, 76, 39, 49, 150, 240, 307, 276], "koppen_detail": "Cfb"}, {"id": "paris", "name": "Parijs", "country": "Frankrijk", "lat": 48.86, "lon": 2.35, "koppen": "Cf", "t": [4.2, 4.3, 7.5, 10.7, 14.0, 17.8, 20.3, 19.6, 16.5, 12.8, 8.1, 5.4], "p": [56, 48, 52, 44, 71, 65, 52, 59, 42, 53, 65, 72], "koppen_detail": "Cfb"}, {"id": "berlin", "name": "Berlijn", "country": "Duitsland", "lat": 52.52, "lon": 13.4, "koppen": "Cf", "t": [0.3, 1.0, 4.6, 9.8, 14.4, 18.3, 20.1, 19.8, 15.5, 10.5, 5.7, 2.8], "p": [56, 27, 41, 32, 53, 70, 91, 53, 50, 50, 49, 52], "koppen_detail": "Cfb"}, {"id": "chicago", "name": "Chicago", "country": "VS", "lat": 41.88, "lon": -87.63, "koppen": "Df", "t": [-4.5, -3.7, 1.4, 7.3, 14.2, 19.9, 23.3, 22.6, 19.2, 12.4, 4.6, -0.4], "p": [52, 62, 67, 109, 135, 120, 103, 93, 82, 108, 64, 61], "koppen_detail": "Dfa"}, {"id": "minneapolis", "name": "Minneapolis", "country": "VS", "lat": 44.98, "lon": -93.27, "koppen": "Df", "t": [-9.6, -7.9, 0.3, 7.1, 14.7, 20.4, 23.4, 22.0, 17.9, 9.9, 1.3, -6.1], "p": [22, 31, 45, 90, 122, 134, 99, 89, 97, 76, 46, 44], "koppen_detail": "Dfa"}, {"id": "moscow", "name": "Moskou", "country": "Rusland", "lat": 55.76, "lon": 37.62, "koppen": "Df", "t": [-9.4, -7.1, -2.9, 5.5, 14.5, 17.5, 20.2, 18.6, 12.4, 5.3, 0.0, -4.0], "p": [36, 31, 33, 41, 60, 65, 66, 62, 62, 47, 46, 47], "koppen_detail": "Dfb"}, {"id": "stockholm", "name": "Stockholm", "country": "Zweden", "lat": 59.33, "lon": 18.07, "koppen": "Df", "t": [-2.5, -1.7, 0.8, 5.4, 10.9, 15.0, 18.2, 16.9, 13.0, 7.5, 3.6, 0.2], "p": [39, 34, 32, 32, 45, 69, 55, 71, 58, 52, 55, 47], "koppen_detail": "Dfb"}, {"id": "montreal", "name": "Montreal", "country": "Canada", "lat": 45.5, "lon": -73.57, "koppen": "Df", "t": [-9.0, -7.7, -2.3, 5.3, 13.7, 18.2, 21.9, 20.7, 16.8, 9.9, 1.9, -4.7], "p": [67, 69, 71, 108, 102, 116, 81, 100, 98, 132, 80, 96], "koppen_detail": "Dfb"}, {"id": "warsaw", "name": "Warschau", "country": "Polen", "lat": 52.23, "lon": 21.01, "koppen": "Df", "t": [-2.6, -1.0, 3.5, 9.5, 14.7, 18.6, 20.0, 19.8, 14.7, 9.0, 5.0, 0.9], "p": [47, 35, 40, 44, 86, 67, 98, 69, 59, 48, 43, 50], "koppen_detail": "Dfb"}];
+  const KOPPEN_CODES = ["Af", "As", "Aw", "BW", "BS", "Cf", "Cs", "Cw", "Df", "Ds", "Dw", "ET", "EF", "EH"];
+  const KOPPEN_HELP = {"Af": "tropisch · F fehlt: veel neerslag, geen droge tijd", "As": "tropisch · S sommertrocken: zomers droog", "Aw": "tropisch · W wintertrocken: winters droog", "BW": "droog · W woestijn: heel weinig regen", "BS": "droog · S steppe: droog, iets meer regen dan woestijn", "Cf": "zeeklimaat · F fehlt: neerslag het hele jaar", "Cs": "zeeklimaat · S sommertrocken: zomers droog", "Cw": "zeeklimaat · W wintertrocken: winters droog", "Df": "landklimaat · F fehlt: neerslag het hele jaar", "Ds": "landklimaat · S sommertrocken: zomers droog", "Dw": "landklimaat · W wintertrocken: winters droog", "ET": "polair · T toendra: warmste maand 0–10°C", "EF": "polair · F permafrost: altijd onder 0°C", "EH": "polair · H hooggebergte"};
+  const ROUND_SIZE = 8;
+  const MONTHS = ["J","F","M","A","M","J","J","A","S","O","N","D"];
+  const MONTHS_NL = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+  // Zomerhelft: N.H. apr–sep; Z.H. okt–mrt (omgekeerd)
+  const SUMMER_NH = new Set([3, 4, 5, 6, 7, 8]);
+
+  let state = {
+    round: [],
+    diagramOrder: [],
+    activeDiagram: null,
+    answers: {}, // diagramPlaceId -> { placeId, koppen }
+    phase: "play",
+    usedIds: [],
+    previewPos: null, // { left, top } px in .map-wrap
+    reviewScore: null,
+  };
+
+  let previewDrag = null; // { startX, startY, origLeft, origTop }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function byId(id) { return PLACES.find(p => p.id === id); }
+
+  function pickRound(n) {
+    const by = {};
+    for (const p of PLACES) (by[p.koppen[0]] ||= []).push(p);
+    const quota = { A: 2, B: 2, C: 2, D: 1, E: 1 };
+    const picked = [];
+    const pickedIds = new Set();
+    const avoid = new Set(state.usedIds.slice(-24));
+
+    function takeFrom(group, count) {
+      const pool = shuffle((by[group] || []).filter(p => !pickedIds.has(p.id)));
+      pool.sort((a, b) => (avoid.has(a.id) ? 1 : 0) - (avoid.has(b.id) ? 1 : 0));
+      for (const p of pool) {
+        if (count <= 0) break;
+        picked.push(p); pickedIds.add(p.id); count--;
+      }
+    }
+    for (const [g, c] of Object.entries(quota)) takeFrom(g, c);
+    if (picked.length < n) {
+      const rest = shuffle(PLACES.filter(p => !pickedIds.has(p.id)));
+      rest.sort((a, b) => (avoid.has(a.id) ? 1 : 0) - (avoid.has(b.id) ? 1 : 0));
+      for (const p of rest) {
+        if (picked.length >= n) break;
+        picked.push(p); pickedIds.add(p.id);
+      }
+    }
+    return shuffle(picked.slice(0, n));
+  }
+
+  function gradeDiagram(pid) {
+    const truth = byId(pid);
+    const ans = state.answers[pid] || { placeId: "", koppen: "" };
+    const locOk = ans.placeId === pid;
+    const kopOk = ans.koppen === truth.koppen;
+    const status = locOk && kopOk ? "ok" : (locOk || kopOk) ? "partial" : "bad";
+    return { truth, ans, locOk, kopOk, status };
+  }
+
+  function clampPreviewPos(left, top, boxW, boxH, mapW, mapH, pad = 8) {
+    return {
+      left: Math.max(pad, Math.min(left, mapW - boxW - pad)),
+      top: Math.max(pad, Math.min(top, mapH - boxH - pad)),
+    };
+  }
+
+  function pickBestPreviewCorner(boxW, boxH, mapW, mapH) {
+    const pad = 8;
+    const corners = [
+      { left: pad, top: mapH - boxH - pad },
+      { left: mapW - boxW - pad, top: mapH - boxH - pad },
+      { left: pad, top: pad },
+      { left: mapW - boxW - pad, top: pad },
+    ];
+    const pins = state.round.map(p => {
+      const pct = lonLatToPct(p.lon, p.lat);
+      return { x: pct.left / 100 * mapW, y: pct.top / 100 * mapH };
+    });
+    let best = corners[0], bestScore = -Infinity;
+    for (const c of corners) {
+      const cx = c.left + boxW / 2, cy = c.top + boxH / 2;
+      let minDist = Infinity;
+      let overlaps = 0;
+      for (const pin of pins) {
+        const inside =
+          pin.x >= c.left - 12 && pin.x <= c.left + boxW + 12 &&
+          pin.y >= c.top - 18 && pin.y <= c.top + boxH + 8;
+        if (inside) overlaps++;
+        const d = Math.hypot(pin.x - cx, pin.y - cy);
+        if (d < minDist) minDist = d;
+      }
+      const score = minDist - overlaps * 120;
+      if (score > bestScore) { bestScore = score; best = c; }
+    }
+    return clampPreviewPos(best.left, best.top, boxW, boxH, mapW, mapH, pad);
+  }
+
+  function applyPreviewPosition(box) {
+    const map = document.getElementById("map");
+    if (!map || !box || box.classList.contains("empty")) return;
+    const mapW = map.clientWidth, mapH = map.clientHeight;
+    const boxW = box.offsetWidth, boxH = box.offsetHeight;
+    if (!mapW || !mapH || !boxW || !boxH) return;
+    if (!state.previewPos) {
+      state.previewPos = pickBestPreviewCorner(boxW, boxH, mapW, mapH);
+    } else {
+      state.previewPos = clampPreviewPos(
+        state.previewPos.left, state.previewPos.top, boxW, boxH, mapW, mapH
+      );
+    }
+    box.style.left = state.previewPos.left + "px";
+    box.style.top = state.previewPos.top + "px";
+    box.style.right = "auto";
+    box.style.bottom = "auto";
+  }
+
+  function bindPreviewDrag(box) {
+    const head = box.querySelector(".map-preview-head");
+    if (!head || head.dataset.dragBound) return;
+    head.dataset.dragBound = "1";
+    head.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      if (e.target.closest("button")) return;
+      e.preventDefault();
+      const map = document.getElementById("map");
+      const rect = box.getBoundingClientRect();
+      const mapRect = map.getBoundingClientRect();
+      previewDrag = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origLeft: rect.left - mapRect.left,
+        origTop: rect.top - mapRect.top,
+      };
+      box.classList.add("dragging");
+    });
+  }
+
+  function onPreviewDragMove(e) {
+    if (!previewDrag) return;
+    const box = document.getElementById("map-preview");
+    const map = document.getElementById("map");
+    if (!box || !map) return;
+    const dx = e.clientX - previewDrag.startX;
+    const dy = e.clientY - previewDrag.startY;
+    const pos = clampPreviewPos(
+      previewDrag.origLeft + dx,
+      previewDrag.origTop + dy,
+      box.offsetWidth, box.offsetHeight,
+      map.clientWidth, map.clientHeight
+    );
+    state.previewPos = pos;
+    box.style.left = pos.left + "px";
+    box.style.top = pos.top + "px";
+    box.style.right = "auto";
+    box.style.bottom = "auto";
+  }
+
+  function onPreviewDragEnd() {
+    if (!previewDrag) return;
+    previewDrag = null;
+    document.getElementById("map-preview")?.classList.remove("dragging");
+  }
+
+  document.addEventListener("mousemove", onPreviewDragMove);
+  document.addEventListener("mouseup", onPreviewDragEnd);
+
+  function renderExplain() {
+    const el = document.getElementById("map-explain");
+    const map = document.getElementById("map");
+    if (!el || !map) return;
+    if (state.phase !== "review" || !state.activeDiagram) {
+      el.className = "map-explain hidden";
+      el.innerHTML = "";
+      return;
+    }
+    const { truth, ans, locOk, kopOk, status } = gradeDiagram(state.activeDiagram);
+    const guessed = ans.placeId ? byId(ans.placeId) : null;
+    const locLine = locOk
+      ? `Plaats juist: ${truth.name}`
+      : `Jij: ${guessed ? guessed.name : "—"} → juist: ${truth.name}`;
+    const kopLine = kopOk
+      ? `Köppen juist: ${truth.koppen}`
+      : `Jij: ${ans.koppen || "—"} → juist: ${truth.koppen}`;
+    const statusLabel = status === "ok" ? "Goed" : status === "partial" ? "Deels goed" : "Fout";
+    const whyHtml = whyListHtml(explainReviewLines(truth, ans, locOk, kopOk));
+
+    el.className = `map-explain status-${status}`;
+    el.innerHTML = `
+      <strong>${statusLabel} · ${truth.name}</strong>
+      <p class="${locOk ? "row-ok" : "row-bad"}">${locLine}</p>
+      <p class="${kopOk ? "row-ok" : "row-bad"}">${kopLine}</p>
+      ${whyHtml}`;
+
+    const pct = lonLatToPct(truth.lon, truth.lat);
+    const mapW = map.clientWidth, mapH = map.clientHeight;
+    // temporary place to measure
+    el.style.left = "0px";
+    el.style.top = "0px";
+    const ew = el.offsetWidth || 200;
+    const eh = el.offsetHeight || 100;
+    const pinX = pct.left / 100 * mapW;
+    const pinY = pct.top / 100 * mapH;
+    const gap = 10;
+    let left = pinX + gap;
+    let top = pinY - eh - gap;
+    // Prefer right-above; flip if needed
+    if (left + ew > mapW - 8) left = pinX - ew - gap;
+    if (left < 8) left = 8;
+    if (top < 8) top = pinY + gap + 8;
+    if (top + eh > mapH - 8) top = Math.max(8, mapH - eh - 8);
+    // Avoid overlapping preview if possible
+    const prev = state.previewPos;
+    const box = document.getElementById("map-preview");
+    if (prev && box) {
+      const pw = box.offsetWidth, ph = box.offsetHeight;
+      const overlaps =
+        left < prev.left + pw && left + ew > prev.left &&
+        top < prev.top + ph && top + eh > prev.top;
+      if (overlaps) {
+        const altLeft = pinX - ew - gap;
+        if (altLeft >= 8 && !(altLeft < prev.left + pw && altLeft + ew > prev.left &&
+            top < prev.top + ph && top + eh > prev.top)) {
+          left = altLeft;
+        } else {
+          const altTop = pinY + gap + 8;
+          if (altTop + eh <= mapH - 8) top = altTop;
+        }
+      }
+    }
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+  }
+
+  function lonLatToPct(lon, lat) {
+    return {
+      left: (lon + 180) / 360 * 100,
+      top: (90 - lat) / 180 * 100,
+    };
+  }
+
+  function climateSvg(place) {
+    const W = 280, H = 168;
+    const padL = 34, padR = 30, padT = 14, padB = 22;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const tMin = -30, tMax = 40, pMax = 400;
+    const barW = plotW / 12 * 0.62;
+    const temps = place.t, precs = place.p;
+    const yT = t => padT + (1 - (t - tMin) / (tMax - tMin)) * plotH;
+    const yP = p => padT + (1 - Math.min(p, pMax) / pMax) * plotH;
+    const xAt = i => padL + (i + 0.5) * (plotW / 12);
+    let bars = "";
+    for (let i = 0; i < 12; i++) {
+      const y = yP(precs[i]);
+      bars += `<rect x="${(xAt(i)-barW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0.5, padT+plotH-y).toFixed(1)}" fill="#3a7ca5" opacity="0.85"/>`;
+    }
+    const pts = temps.map((t,i) => `${xAt(i).toFixed(1)},${yT(t).toFixed(1)}`).join(" ");
+    const months = MONTHS.map((m,i) =>
+      `<text x="${xAt(i).toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="#5a5a5a" font-family="IBM Plex Sans,sans-serif">${m}</text>`).join("");
+
+    // Köppen-relevante grenzen: 18°C (A/C), 10°C (E), 0°C, −3°C (C/D)
+    const keyTemps = [
+      { t: 40, label: "40", key: false },
+      { t: 18, label: "18", key: true },
+      { t: 10, label: "10", key: false },
+      { t: 0, label: "0", key: false },
+      { t: -3, label: "−3", key: true },
+      { t: -20, label: "−20", key: false },
+    ];
+    const guides = keyTemps.map(({ t, label, key }) => {
+      const y = yT(t);
+      const stroke = key ? "#c45c26" : (t === 0 ? "#bbb" : "#e2dbd0");
+      const dash = key ? "4 2" : (t === 0 ? "3 2" : "2 3");
+      const sw = key ? "1.1" : "0.8";
+      const fill = key ? "#c45c26" : "#666";
+      const weight = key ? "700" : "400";
+      return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${dash}" opacity="${key ? 0.85 : 0.7}"/>
+      <text x="2" y="${(y + 3).toFixed(1)}" font-size="8" font-weight="${weight}" fill="${fill}" font-family="IBM Plex Sans,sans-serif">${label}</text>`;
+    }).join("");
+
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Klimaatdiagram">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#d9d2c5"/>
+      <line x1="${W-padR}" y1="${padT}" x2="${W-padR}" y2="${padT+plotH}" stroke="#d9d2c5"/>
+      <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="#d9d2c5"/>
+      ${guides}
+      <text x="2" y="${padT-2}" font-size="8" fill="#c45c26" font-family="IBM Plex Sans,sans-serif">°C</text>
+      <text x="${W-2}" y="${padT-2}" font-size="8" fill="#3a7ca5" font-family="IBM Plex Sans,sans-serif" text-anchor="end">mm</text>
+      <text x="${W-2}" y="${yP(400).toFixed(1)}" font-size="8" fill="#888" font-family="IBM Plex Sans,sans-serif" text-anchor="end">400</text>
+      <text x="${W-2}" y="${yP(200).toFixed(1)}" font-size="8" fill="#888" font-family="IBM Plex Sans,sans-serif" text-anchor="end">200</text>
+      ${bars}
+      <polyline fill="none" stroke="#c45c26" stroke-width="2" points="${pts}"/>
+      ${temps.map((t,i)=>`<circle cx="${xAt(i).toFixed(1)}" cy="${yT(t).toFixed(1)}" r="2.2" fill="#c45c26"/>`).join("")}
+      ${months}
+    </svg>`;
+  }
+
+  function hemiInfo(lat) {
+    if (lat >= 0) {
+      return {
+        code: "N.H.",
+        name: "noordelijk halfrond",
+        summer: "apr–sep",
+        winter: "okt–mrt",
+        isSummer: (mi) => SUMMER_NH.has(mi),
+      };
+    }
+    return {
+      code: "Z.H.",
+      name: "zuidelijk halfrond",
+      summer: "okt–mrt",
+      winter: "apr–sep",
+      isSummer: (mi) => !SUMMER_NH.has(mi),
+    };
+  }
+
+  function driestMonth(pr) {
+    let idx = 0;
+    for (let i = 1; i < pr.length; i++) if (pr[i] < pr[idx]) idx = i;
+    return { idx, mm: pr[idx], name: MONTHS_NL[idx] };
+  }
+
+  function climateStats(p) {
+    const t = p.t, pr = p.p;
+    let warmIdx = 0, coldIdx = 0, wetIdx = 0;
+    for (let i = 1; i < 12; i++) {
+      if (t[i] > t[warmIdx]) warmIdx = i;
+      if (t[i] < t[coldIdx]) coldIdx = i;
+      if (pr[i] > pr[wetIdx]) wetIdx = i;
+    }
+    const dry = driestMonth(pr);
+    return {
+      warm: { idx: warmIdx, v: t[warmIdx], name: MONTHS_NL[warmIdx] },
+      cold: { idx: coldIdx, v: t[coldIdx], name: MONTHS_NL[coldIdx] },
+      dry,
+      wet: { idx: wetIdx, mm: pr[wetIdx], name: MONTHS_NL[wetIdx] },
+      sumP: pr.reduce((a, b) => a + b, 0),
+      amp: t[warmIdx] - t[coldIdx],
+      hemi: hemiInfo(p.lat),
+    };
+  }
+
+  function monthDist(a, b) {
+    const d = Math.abs(a - b);
+    return Math.min(d, 12 - d);
+  }
+
+  /** Korte Köppen-redenering voor het juiste antwoord. */
+  function explainKoppenShort(p) {
+    const s = climateStats(p);
+    const code = p.koppen;
+    const L1 = code[0], L2 = code[1] || "";
+    const lines = [];
+
+    if (L1 === "A") {
+      lines.push(`Koudste ${s.cold.v.toFixed(0)}°C ≥ 18°C → A (tropisch).`);
+    } else if (L1 === "B") {
+      lines.push(`Weinig regen t.o.v. temperatuur (~${s.sumP} mm/jaar) → B (droog).`);
+    } else if (L1 === "C") {
+      lines.push(`Koudste ${s.cold.v.toFixed(0)}°C tussen −3 en 18°C → C (zeeklimaat).`);
+    } else if (L1 === "D") {
+      lines.push(`Koudste ${s.cold.v.toFixed(0)}°C ≤ −3°C, warmste > 10°C → D (landklimaat).`);
+    } else if (code === "EF") {
+      lines.push(`Warmste ${s.warm.v.toFixed(0)}°C < 0°C → EF.`);
+    } else if (code === "EH") {
+      lines.push(`Hooggebergte → EH.`);
+    } else if (L1 === "E") {
+      lines.push(`Warmste ${s.warm.v.toFixed(0)}°C < 10°C → ET.`);
+    }
+
+    if ((L1 === "A" || L1 === "C" || L1 === "D") && (L2 === "f" || L2 === "w" || L2 === "s")) {
+      const dryInSummer = s.hemi.isSummer(s.dry.idx);
+      const seizoen = dryInSummer ? "zomer" : "winter";
+      if (L1 === "A" && L2 === "f") {
+        lines.push(`Droogste ${s.dry.name}: ${s.dry.mm} mm ≥ 60 → geen droge tijd → Af.`);
+      } else if (L1 === "A") {
+        lines.push(`Droogste ${s.dry.name}: ${s.dry.mm} mm < 60 → droge tijd.`);
+        lines.push(`${s.dry.name} = ${seizoen} ${s.hemi.code} → ${code}.`);
+      } else if (L2 === "f") {
+        lines.push(`Geen sterke droge tijd → ${code}.`);
+      } else {
+        lines.push(`Droogste ${s.dry.name} in de ${seizoen} (${s.hemi.code}) → ${code}.`);
+      }
+    } else if (L1 === "B") {
+      lines.push(L2 === "W" ? "BW = woestijn." : "BS = steppe.");
+    }
+
+    return lines;
+  }
+
+  /** Waarom jouw Köppen-code niet klopt. */
+  function explainKoppenVsGuess(p, guessed) {
+    if (!guessed || guessed === p.koppen) return [];
+    const s = climateStats(p);
+    const dryInSummer = s.hemi.isSummer(s.dry.idx);
+    const g1 = guessed[0], g2 = guessed[1] || "";
+    const t1 = p.koppen[0], t2 = p.koppen[1] || "";
+    const lines = [];
+
+    if (g1 !== t1) {
+      lines.push(...explainKoppenShort(p).slice(0, 2));
+      lines.push(`Jouw ${guessed} mist die hoofdgroep.`);
+      return lines;
+    }
+    if (t1 === "A" && g2 !== t2) {
+      if (g2 === "f") {
+        lines.push(`Niet Af: droogste ${s.dry.name} heeft ${s.dry.mm} mm (< 60).`);
+      } else if (g2 === "s" && t2 === "w") {
+        lines.push(`Niet As: ${s.dry.name} valt in de winter ${s.hemi.code} (${s.hemi.winter}).`);
+      } else if (g2 === "w" && t2 === "s") {
+        lines.push(`Niet Aw: ${s.dry.name} valt in de zomer ${s.hemi.code} (${s.hemi.summer}).`);
+      } else if ((g2 === "s" || g2 === "w") && t2 === "f") {
+        lines.push(`Niet ${guessed}: droogste ${s.dry.mm} mm ≥ 60 → Af.`);
+      } else {
+        lines.push(`Jouw ${guessed} ≠ ${p.koppen}.`);
+      }
+      return lines;
+    }
+    if ((t1 === "C" || t1 === "D") && g2 !== t2) {
+      const seizoen = dryInSummer ? "zomer" : "winter";
+      lines.push(`Droogste maand ${s.dry.name} = ${seizoen} ${s.hemi.code} → ${p.koppen}, niet ${guessed}.`);
+      return lines;
+    }
+    if (t1 === "B" && g2 !== t2) {
+      lines.push(`Juist is ${p.koppen} (${t2 === "W" ? "woestijn" : "steppe"}), niet ${guessed}.`);
+      return lines;
+    }
+    lines.push(`Jouw ${guessed} ≠ ${p.koppen}.`);
+    return lines;
+  }
+
+  /** Hoe je de juiste plaats uit het diagram haalt t.o.v. jouw gok. */
+  function explainPlaceVsGuess(truth, guessed) {
+    const A = climateStats(truth);
+    const B = climateStats(guessed);
+    const lines = [
+      `Diagram: warmste ${A.warm.name} ~${A.warm.v.toFixed(0)}°C, koudste ${A.cold.name} ~${A.cold.v.toFixed(0)}°C; ` +
+      `droogste ${A.dry.name} ${A.dry.mm} mm, natst ${A.wet.name} ${A.wet.mm} mm.`,
+    ];
+    const diffs = [];
+
+    if (Math.abs(A.warm.v - B.warm.v) >= 3) {
+      diffs.push(
+        `${guessed.name}: warmste ~${B.warm.v.toFixed(0)}°C → te ${B.warm.v < A.warm.v ? "koel" : "heet"} voor dit diagram.`
+      );
+    } else if (Math.abs(A.cold.v - B.cold.v) >= 3) {
+      diffs.push(
+        `${guessed.name}: koudste ~${B.cold.v.toFixed(0)}°C (diagram ~${A.cold.v.toFixed(0)}°C).`
+      );
+    } else if (Math.abs(A.amp - B.amp) >= 5) {
+      diffs.push(
+        `Temperatuurslag diagram ~${A.amp.toFixed(0)}°C; ${guessed.name} ~${B.amp.toFixed(0)}°C.`
+      );
+    }
+
+    if (A.hemi.code !== B.hemi.code) {
+      diffs.push(
+        `Warmste maand in diagram: ${A.warm.name} (${A.hemi.code}). ${guessed.name} ligt op het ${B.hemi.name} → seizoenen andersom.`
+      );
+    } else if (monthDist(A.warm.idx, B.warm.idx) >= 3 && A.amp >= 4 && B.amp >= 4) {
+      diffs.push(
+        `Warmste maand diagram: ${A.warm.name}; bij ${guessed.name}: ${B.warm.name}.`
+      );
+    }
+
+    if (monthDist(A.dry.idx, B.dry.idx) >= 3 && (A.dry.mm < 60 || B.dry.mm < 60)) {
+      diffs.push(
+        `Droge tijd diagram: ${A.dry.name}; bij ${guessed.name}: ${B.dry.name}.`
+      );
+    } else if (Math.abs(A.dry.mm - B.dry.mm) >= 40 && Math.min(A.dry.mm, B.dry.mm) < 80) {
+      diffs.push(
+        `Droogste maand diagram ${A.dry.mm} mm; ${guessed.name} ${B.dry.mm} mm.`
+      );
+    }
+
+    if (A.sumP > 0 && (A.sumP / Math.max(B.sumP, 1) >= 2 || B.sumP / A.sumP >= 2)) {
+      diffs.push(`Jaarneerslag diagram ~${A.sumP} mm; ${guessed.name} ~${B.sumP} mm.`);
+    }
+
+    if (truth.koppen !== guessed.koppen) {
+      diffs.push(`${guessed.name} is ${guessed.koppen}; dit diagram hoort bij ${truth.koppen}.`);
+    }
+
+    if (!diffs.length) {
+      diffs.push(
+        `${guessed.name} (${guessed.country}) lijkt klimaatachtig, maar hoort niet bij dit diagram → ${truth.name} (${truth.country}).`
+      );
+    }
+
+    lines.push(...diffs.slice(0, 2));
+    lines.push(`Dus: ${truth.name}, niet ${guessed.name}.`);
+    return lines;
+  }
+
+  /** Review-uitleg: altijd jouw keuze vs juist antwoord. */
+  function explainReviewLines(truth, ans, locOk, kopOk) {
+    const guessed = ans.placeId ? byId(ans.placeId) : null;
+    let lines = [];
+
+    if (!locOk && guessed) {
+      lines = explainPlaceVsGuess(truth, guessed);
+      if (!kopOk && ans.koppen) {
+        lines = lines.concat(explainKoppenVsGuess(truth, ans.koppen));
+      }
+    } else if (!kopOk && ans.koppen) {
+      lines = explainKoppenVsGuess(truth, ans.koppen);
+    } else {
+      lines = explainKoppenShort(truth);
+    }
+    return lines.slice(0, 5);
+  }
+
+  function whyListHtml(lines) {
+    if (!lines || !lines.length) return "";
+    return `<ul class="why-list">${lines.map(l => `<li>${l}</li>`).join("")}</ul>`;
+  }
+
+  function explainPlace(p) {
+    return explainKoppenShort(p).join(" ");
+  }
+
+  function diagramIndex(pid) { return state.diagramOrder.indexOf(pid) + 1; }
+
+  function placeOwner(placeId) {
+    const hit = Object.entries(state.answers).find(([, a]) => a.placeId === placeId);
+    return hit ? hit[0] : null;
+  }
+
+  function placeOptionsHtml(forPid) {
+    const ans = state.answers[forPid] || { placeId: "" };
+    const opts = ['<option value="">— kies plaats —</option>'];
+    const sorted = state.round.slice().sort((a,b) => a.name.localeCompare(b.name, "nl"));
+    for (const p of sorted) {
+      const owner = placeOwner(p.id);
+      const selected = ans.placeId === p.id ? "selected" : "";
+      let label = p.name;
+      let cls = "";
+      if (owner && owner !== forPid) {
+        label = `${p.name} · bezet (D${diagramIndex(owner)})`;
+        cls = ' class="place-taken"';
+      } else if (owner === forPid) {
+        label = `${p.name} · jouw keuze`;
+      }
+      opts.push(`<option value="${p.id}"${cls} ${selected}>${label}</option>`);
+    }
+    return opts.join("");
+  }
+
+  function koppenOptionsHtml(forPid) {
+    const ans = state.answers[forPid] || { koppen: "" };
+    return ['<option value="">— kies code —</option>']
+      .concat(KOPPEN_CODES.map(c => {
+        const hint = KOPPEN_HELP[c] ? ` — ${KOPPEN_HELP[c].split("·")[0].trim()}` : "";
+        return `<option value="${c}" ${ans.koppen===c?"selected":""}>${c}${hint}</option>`;
+      })).join("");
+  }
+
+  function stepDiagram(delta) {
+    if (!state.diagramOrder.length) return;
+    const cur = state.activeDiagram
+      ? state.diagramOrder.indexOf(state.activeDiagram)
+      : 0;
+    const next = (cur + delta + state.diagramOrder.length) % state.diagramOrder.length;
+    selectDiagram(state.diagramOrder[next]);
+  }
+
+  function setPlace(diagramId, placeId) {
+    state.answers[diagramId] = state.answers[diagramId] || { placeId: "", koppen: "" };
+    if (placeId) {
+      for (const [other, a] of Object.entries(state.answers)) {
+        if (other !== diagramId && a.placeId === placeId) a.placeId = "";
+      }
+    }
+    state.answers[diagramId].placeId = placeId;
+  }
+
+  function setKoppen(diagramId, code) {
+    state.answers[diagramId] = state.answers[diagramId] || { placeId: "", koppen: "" };
+    state.answers[diagramId].koppen = code;
+  }
+
+  function selectDiagram(pid) {
+    state.activeDiagram = pid;
+    renderDiagrams();
+  }
+
+  function renderLegend() {
+    document.getElementById("code-legend").innerHTML =
+      KOPPEN_CODES.map(c => `<code title="${KOPPEN_HELP[c]||""}">${c}</code>`).join(" ");
+  }
+
+  function startRound() {
+    state.phase = "play";
+    state.answers = {};
+    state.round = pickRound(ROUND_SIZE);
+    state.usedIds = state.usedIds.concat(state.round.map(p => p.id));
+    state.diagramOrder = shuffle(state.round.map(p => p.id));
+    state.activeDiagram = state.diagramOrder[0] || null;
+    state.previewPos = null;
+    state.reviewScore = null;
+
+    document.getElementById("review").classList.add("hidden");
+    document.getElementById("play").classList.remove("hidden");
+    document.getElementById("btn-check").classList.remove("hidden");
+    document.getElementById("btn-new").classList.add("hidden");
+    document.getElementById("map-hint").textContent =
+      "Diagram selecteren (of Vorige/Volgende) → plaats kiezen → Köppen kiezen. Evenaar = N.H. vs Z.H. (zomer/winter omgekeerd). Preview verslepen via de kop.";
+    document.getElementById("round-meta").textContent =
+      `Ronde: ${state.round.length} plekken · pool ${PLACES.length}`;
+
+    renderMap();
+    renderDiagrams();
+  }
+
+  function renderMap() {
+    const map = document.getElementById("map");
+    map.querySelectorAll(".map-marker").forEach(el => el.remove());
+    for (const place of state.round) {
+      const { left, top } = lonLatToPct(place.lon, place.lat);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "map-marker";
+      btn.style.left = left + "%";
+      btn.style.top = top + "%";
+      btn.dataset.placeId = place.id;
+      btn.title = `${place.name} (${place.country})`;
+      btn.innerHTML = `<span class="pin" aria-hidden="true"></span><span class="label">${place.name}</span>`;
+      btn.addEventListener("click", () => onPlaceClick(place.id));
+      map.appendChild(btn);
+    }
+  }
+
+  function renderPreview() {
+    const box = document.getElementById("map-preview");
+    const pid = state.activeDiagram;
+    if (!pid) {
+      box.className = "map-preview empty";
+      box.innerHTML = "Nog geen diagram geselecteerd.";
+      document.getElementById("map-explain").className = "map-explain hidden";
+      return;
+    }
+    const placeData = byId(pid);
+    const ans = state.answers[pid] || { placeId: "", koppen: "" };
+    const idx = diagramIndex(pid);
+    const total = state.diagramOrder.length;
+    const inReview = state.phase === "review";
+    const disabled = inReview ? "disabled" : "";
+    const hasPlace = !!ans.placeId;
+    const chosen = hasPlace ? byId(ans.placeId) : null;
+
+    let statusClass = "";
+    let reviewBlock = "";
+    let pill = chosen ? chosen.name : "kies plaats";
+    if (inReview) {
+      const g = gradeDiagram(pid);
+      statusClass = ` status-${g.status}`;
+      const statusLabel = g.status === "ok" ? "Goed" : g.status === "partial" ? "Deels" : "Fout";
+      pill = `${statusLabel} · ${g.truth.name}`;
+      const locCls = g.locOk ? "row-ok" : "row-bad";
+      const kopCls = g.kopOk ? "row-ok" : "row-bad";
+      reviewBlock = `
+        <div class="review-status">
+          <div class="${locCls}">Plaats: ${g.locOk ? "juist" : `fout (${chosen ? chosen.name : "—"})`} → ${g.truth.name}</div>
+          <div class="${kopCls}">Köppen: ${g.kopOk ? "juist" : `fout (${ans.koppen || "—"})`} → ${g.truth.koppen}</div>
+        </div>`;
+    }
+
+    box.className = "map-preview" + statusClass;
+    box.innerHTML = `
+      <div class="map-preview-head" title="Slepen om te verplaatsen">
+        <div class="map-preview-nav">
+          <button type="button" data-prev title="Vorig diagram" aria-label="Vorig diagram">‹</button>
+          <span class="nav-label">Diagram ${idx}/${total}</span>
+          <button type="button" data-next title="Volgend diagram" aria-label="Volgend diagram">›</button>
+        </div>
+        <span class="pill">${pill}</span>
+      </div>
+      ${climateSvg(placeData)}
+      ${inReview ? reviewBlock : `
+      <div class="place-row">
+        <label for="preview-place">Plaats</label>
+        <select id="preview-place" data-preview-place ${disabled}>${placeOptionsHtml(pid)}</select>
+      </div>
+      <div class="guess-block ${hasPlace ? "ready" : "locked"}">
+        <label for="preview-koppen">Köppen ${hasPlace ? "" : "— kies eerst een plaats"}</label>
+        <select id="preview-koppen" data-preview-koppen ${disabled || !hasPlace ? "disabled" : ""}>
+          ${koppenOptionsHtml(pid)}
+        </select>
+      </div>`}`;
+    box.querySelector("[data-prev]")?.addEventListener("click", () => stepDiagram(-1));
+    box.querySelector("[data-next]")?.addEventListener("click", () => stepDiagram(1));
+    if (!inReview) {
+      const placeSel = box.querySelector("[data-preview-place]");
+      const koppenSel = box.querySelector("[data-preview-koppen]");
+      if (placeSel) {
+        placeSel.addEventListener("change", () => {
+          setPlace(pid, placeSel.value);
+          renderDiagrams();
+        });
+      }
+      if (koppenSel) {
+        koppenSel.addEventListener("change", () => {
+          setKoppen(pid, koppenSel.value);
+          renderDiagrams();
+        });
+      }
+    }
+    bindPreviewDrag(box);
+    requestAnimationFrame(() => {
+      applyPreviewPosition(box);
+      renderExplain();
+    });
+  }
+
+  function renderDiagrams() {
+    const root = document.getElementById("diagrams");
+    root.innerHTML = "";
+    state.diagramOrder.forEach((pid, idx) => {
+      const curve = byId(pid);
+      const ans = state.answers[pid] || { placeId: "", koppen: "" };
+      const chosen = ans.placeId ? byId(ans.placeId) : null;
+      const card = document.createElement("div");
+      card.className = "diagram-card" + (state.activeDiagram === pid ? " active" : "");
+      card.dataset.pid = pid;
+      const disabled = state.phase !== "play" ? "disabled" : "";
+      const hasPlace = !!ans.placeId;
+      card.innerHTML = `
+        <div class="diagram-head">
+          <strong>Diagram ${idx+1}</strong>
+          <button type="button" data-select="${pid}">Selecteer</button>
+        </div>
+        ${climateSvg(curve)}
+        <div class="assign-row">
+          <label>Plaats
+            <select data-place-for="${pid}" ${disabled}>${placeOptionsHtml(pid)}</select>
+          </label>
+          <label>Köppen
+            <select data-koppen-for="${pid}" ${disabled || !hasPlace ? "disabled" : ""}>${koppenOptionsHtml(pid)}</select>
+          </label>
+          <span class="pill">${chosen ? chosen.name + (ans.koppen ? " · "+ans.koppen : "") : "niet gekoppeld"}</span>
+        </div>`;
+      if (state.phase === "review") {
+        const g = gradeDiagram(pid);
+        card.classList.toggle("ok", g.status === "ok");
+        card.classList.toggle("partial", g.status === "partial");
+        card.classList.toggle("bad", g.status === "bad");
+      }
+      root.appendChild(card);
+    });
+
+    root.querySelectorAll("[data-select]").forEach(btn => {
+      btn.addEventListener("click", () => selectDiagram(btn.getAttribute("data-select")));
+    });
+    root.querySelectorAll("[data-place-for]").forEach(sel => {
+      sel.addEventListener("change", () => {
+        const pid = sel.getAttribute("data-place-for");
+        setPlace(pid, sel.value);
+        state.activeDiagram = pid;
+        renderDiagrams();
+      });
+    });
+    root.querySelectorAll("[data-koppen-for]").forEach(sel => {
+      sel.addEventListener("change", () => {
+        const pid = sel.getAttribute("data-koppen-for");
+        setKoppen(pid, sel.value);
+        state.activeDiagram = pid;
+        renderDiagrams();
+      });
+    });
+    root.querySelectorAll(".diagram-card").forEach(card => {
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("select, button")) return;
+        selectDiagram(card.dataset.pid);
+      });
+    });
+    renderPreview();
+    highlightMarkers();
+  }
+
+  function highlightMarkers() {
+    const inReview = state.phase === "review";
+    const focusTruth = inReview && state.activeDiagram ? state.activeDiagram : "";
+    const activeGuess = !inReview && state.activeDiagram && state.answers[state.activeDiagram]
+      ? state.answers[state.activeDiagram].placeId
+      : "";
+    document.querySelectorAll(".map-marker").forEach(m => {
+      const placeId = m.dataset.placeId;
+      const owner = placeOwner(placeId);
+      const place = byId(placeId);
+      m.classList.toggle("taken", !inReview && !!owner);
+      m.classList.toggle("active-target", !!activeGuess && placeId === activeGuess);
+      m.classList.toggle("review-focus", !!focusTruth && placeId === focusTruth);
+      if (inReview) {
+        const answeredWith = Object.entries(state.answers).find(([, a]) => a.placeId === placeId);
+        const locOk = answeredWith && answeredWith[0] === placeId;
+        m.classList.toggle("reveal-ok", !!locOk);
+        m.classList.toggle("reveal-bad", !locOk);
+        m.title = `${place.name}: ${place.koppen}`;
+      } else {
+        m.classList.remove("reveal-ok", "reveal-bad", "review-focus");
+        if (owner) {
+          m.title = `${place.name} · toegewezen aan diagram ${diagramIndex(owner)}`;
+        } else {
+          m.title = `${place.name} (${place.country}) · vrij`;
+        }
+      }
+    });
+  }
+
+  function onPlaceClick(placeId) {
+    if (state.phase !== "play") return;
+    if (!state.activeDiagram) {
+      const free = state.diagramOrder.find(pid => !(state.answers[pid] && state.answers[pid].placeId));
+      state.activeDiagram = free || state.diagramOrder[0];
+    }
+    setPlace(state.activeDiagram, placeId);
+    renderDiagrams();
+  }
+
+  function checkRound() {
+    let scoreLoc = 0, scoreKop = 0;
+    const items = [];
+    state.diagramOrder.forEach((pid, idx) => {
+      const g = gradeDiagram(pid);
+      if (g.locOk) scoreLoc++;
+      if (g.kopOk) scoreKop++;
+      items.push({ idx, ...g });
+    });
+
+    state.phase = "review";
+    state.reviewScore = { scoreLoc, scoreKop, total: items.length };
+    state.activeDiagram = state.diagramOrder[0] || null;
+
+    document.getElementById("btn-check").classList.add("hidden");
+    document.getElementById("btn-new").classList.remove("hidden");
+    document.getElementById("map-hint").textContent =
+      "Review: doorloop diagrammen met ‹ ›. Groen = goed, oranje = deels, rood = fout. Uitleg staat bij de juiste stad.";
+    document.getElementById("round-meta").textContent =
+      `Score: plaats ${scoreLoc}/${items.length} · Köppen ${scoreKop}/${items.length}`;
+
+    renderDiagrams();
+
+    const total = items.length;
+    document.getElementById("score-line").textContent =
+      `Plaats ${scoreLoc}/${total} · Köppen ${scoreKop}/${total}`;
+
+    document.getElementById("review-list").innerHTML = items.map(it => {
+      const guessedPlace = it.ans.placeId ? byId(it.ans.placeId) : null;
+      const locText = it.locOk
+        ? `Plaats juist: ${it.truth.name}`
+        : `Jij: ${guessedPlace ? guessedPlace.name : "—"} → juist: ${it.truth.name}`;
+      const kopText = it.kopOk
+        ? `Köppen juist: ${it.truth.koppen}`
+        : `Jij: ${it.ans.koppen || "—"} → juist: ${it.truth.koppen}`;
+      return `<article class="review-item ${it.status}">
+        <h3>Diagram ${it.idx+1} → ${it.truth.name} (${it.truth.country})</h3>
+        <p>${locText}</p>
+        <p>${kopText}</p>
+        ${whyListHtml(explainReviewLines(it.truth, it.ans, it.locOk, it.kopOk))}
+      </article>`;
+    }).join("");
+
+    document.getElementById("review").classList.remove("hidden");
+    document.getElementById("play").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  document.getElementById("btn-check").addEventListener("click", checkRound);
+  document.getElementById("btn-new").addEventListener("click", startRound);
+  document.getElementById("btn-new-2").addEventListener("click", startRound);
+
+  renderLegend();
+  startRound();
+  </script>
+</body>
+</html>
