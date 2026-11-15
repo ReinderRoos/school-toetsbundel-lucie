@@ -27,7 +27,7 @@
       font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
       font-size: 0.88rem;
     }
-    .toolbar button, .diagram-card button, .review-actions button, .map-preview button {
+    .toolbar button, .diagram-card button, .review-actions button {
       font-family: inherit; font-size: 0.88rem;
       border: 1px solid var(--line); background: var(--panel);
       color: var(--ink); padding: 0.4rem 0.75rem; border-radius: 6px;
@@ -177,62 +177,69 @@
       left: 0.45rem;
       top: auto;
       bottom: 0.45rem;
-      width: min(38%, 230px);
+      width: min(34%, 210px);
+      max-height: calc(100% - 0.9rem);
+      overflow-y: auto;
       z-index: 4;
       background: rgba(255,254,249,0.97);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 0.4rem 0.45rem 0.5rem;
+      padding: 0.28rem 0.32rem 0.35rem;
       box-shadow: 0 2px 10px rgba(0,0,0,.12);
       font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-      font-size: 0.72rem;
+      font-size: 0.62rem;
+      line-height: 1.25;
     }
-    .map-preview.empty { color: var(--muted); padding: 0.55rem 0.6rem; }
+    .map-preview.empty { color: var(--muted); padding: 0.45rem 0.5rem; }
     .map-preview.status-ok { border-color: var(--ok); box-shadow: 0 0 0 2px rgba(27,107,58,.2); }
     .map-preview.status-partial { border-color: #b45309; box-shadow: 0 0 0 2px rgba(180,83,9,.2); }
     .map-preview.status-bad { border-color: var(--bad); box-shadow: 0 0 0 2px rgba(139,30,30,.2); }
     .map-preview-head {
       display: flex; justify-content: space-between; align-items: center;
-      gap: 0.3rem; margin-bottom: 0.15rem; font-weight: 600;
+      gap: 0.2rem; margin-bottom: 0.1rem; font-weight: 600; font-size: 0.68rem;
       cursor: grab; user-select: none;
     }
     .map-preview.dragging .map-preview-head { cursor: grabbing; }
     .map-preview-nav {
-      display: flex; align-items: center; gap: 0.25rem;
+      display: flex; align-items: center; gap: 0.15rem;
     }
     .map-preview-nav button {
-      padding: 0.15rem 0.4rem; font-size: 0.72rem; min-width: 1.6rem;
-      cursor: pointer;
+      font-family: inherit;
+      border: 1px solid var(--line); background: var(--panel);
+      color: var(--ink); border-radius: 4px;
+      padding: 0.05rem 0.28rem; font-size: 0.62rem; min-width: 1.25rem;
+      line-height: 1.2; cursor: pointer;
     }
-    .map-preview-nav .nav-label { font-weight: 600; min-width: 4.2rem; text-align: center; }
+    .map-preview-nav .nav-label { font-weight: 600; min-width: 3.4rem; text-align: center; font-size: 0.65rem; }
     .map-preview svg {
       width: 100%; height: auto; display: block;
       max-height: 96px;
     }
     .map-preview .guess-block {
-      margin-top: 0.4rem;
-      padding-top: 0.4rem;
+      margin-top: 0.28rem;
+      padding-top: 0.28rem;
       border-top: 1px dashed var(--line);
     }
     .map-preview .guess-block label {
-      display: block; margin-bottom: 0.25rem; font-weight: 600;
+      display: block; margin-bottom: 0.12rem; font-weight: 600; font-size: 0.62rem;
     }
     .map-preview select, .assign-row select {
-      font: inherit; padding: 0.2rem 0.3rem;
+      font: inherit; padding: 0.12rem 0.22rem;
       border: 1px solid var(--line); border-radius: 4px; background: #fff;
       max-width: 100%;
     }
-    .map-preview .place-row { margin-top: 0.3rem; }
-    .map-preview .place-row label { font-weight: 600; display: block; margin-bottom: 0.15rem; }
+    .map-preview select { font-size: 0.62rem; padding: 0.1rem 0.18rem; }
+    .map-preview .place-row { margin-top: 0.2rem; }
+    .map-preview .place-row label { font-weight: 600; display: block; margin-bottom: 0.08rem; font-size: 0.62rem; }
     .map-preview .review-status {
-      margin-top: 0.35rem; padding-top: 0.35rem;
+      margin-top: 0.25rem; padding-top: 0.25rem;
       border-top: 1px dashed var(--line);
-      display: grid; gap: 0.15rem;
+      display: grid; gap: 0.1rem;
     }
     .guess-block.ready {
       background: var(--accent-soft);
-      margin-left: -0.45rem; margin-right: -0.45rem; margin-bottom: -0.5rem;
-      padding: 0.45rem 0.45rem 0.55rem;
+      margin-left: -0.32rem; margin-right: -0.32rem; margin-bottom: -0.35rem;
+      padding: 0.28rem 0.32rem 0.35rem;
       border-top: 1px solid var(--line);
       border-radius: 0 0 8px 8px;
     }
@@ -288,6 +295,28 @@
     .diagram-card .koppen-chip { padding: 0.22rem 0.35rem; }
     .diagram-card .koppen-chip .sub { display: none; }
     .diagram-card .koppen-build { font-size: 0.85rem; }
+
+    /* Compact Köppen UI inside map preview overlay */
+    .map-preview .koppen-picker { gap: 0.22rem; }
+    .map-preview .koppen-build {
+      gap: 0.18rem; font-size: 0.72rem;
+    }
+    .map-preview .koppen-build .kb-slot {
+      min-width: 1.15rem; height: 1.15rem; padding: 0 0.2rem;
+      border-width: 1.5px; border-radius: 4px; font-size: 0.7rem;
+    }
+    .map-preview .koppen-build .kb-code {
+      padding: 0.02rem 0.28rem; font-size: 0.65rem;
+    }
+    .map-preview .koppen-step-label { font-size: 0.55rem; }
+    .map-preview .koppen-step-label .hint { display: none; }
+    .map-preview .chip-row { gap: 0.15rem; }
+    .map-preview .koppen-chip {
+      border-radius: 5px; padding: 0.1rem 0.28rem;
+      font-size: 0.58rem; min-width: 1.45rem; line-height: 1.15;
+    }
+    .map-preview .koppen-chip strong { font-size: 0.68rem; }
+    .map-preview .koppen-chip .sub { display: none; }
 
     .map-explain {
       position: absolute;
