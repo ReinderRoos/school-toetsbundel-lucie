@@ -211,9 +211,30 @@
       line-height: 1.2; cursor: pointer;
     }
     .map-preview-nav .nav-label { font-weight: 600; min-width: 3.4rem; text-align: center; font-size: 0.65rem; }
-    .map-preview svg {
+    .map-preview svg,
+    .map-preview .climate-svg {
       width: 100%; height: auto; display: block;
       max-height: 96px;
+    }
+    .climate-fig { display: grid; gap: 0.12rem; }
+    .climate-readout {
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--ink);
+      min-height: 1.15em;
+      line-height: 1.25;
+    }
+    .climate-readout.is-empty { color: var(--muted); font-weight: 500; }
+    .map-preview .climate-readout { font-size: 0.58rem; min-height: 1em; }
+    .climate-hit { cursor: pointer; }
+    .climate-hit:hover { fill: rgba(11, 95, 107, 0.1); }
+    .climate-bar.is-active { fill: #1f5f86; opacity: 1; }
+    .climate-dot.is-active {
+      stroke: #fff; stroke-width: 1.4;
+    }
+    .climate-col-guide.is-active {
+      stroke: rgba(11, 95, 107, 0.35); stroke-width: 1;
     }
     .map-preview .guess-block {
       margin-top: 0.28rem;
@@ -375,7 +396,8 @@
       font-size: 0.8rem;
     }
     .diagram-head strong { font-size: 0.9rem; }
-    .diagram-card svg {
+    .diagram-card svg,
+    .diagram-card .climate-svg {
       width: 100%; height: auto; display: block;
       max-height: 108px;
     }
@@ -737,25 +759,40 @@
     };
   }
 
-  function climateSvg(place) {
+  function fmtTemp(t) {
+    const n = Number(t);
+    const s = Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, "");
+    return `${s.replace("-", "−")} °C`;
+  }
+
+  function climateFigHtml(place) {
     const W = 240, H = 128;
     const padL = 34, padR = 30, padT = 14, padB = 22;
     const plotW = W - padL - padR;
     const plotH = H - padT - padB;
     const tMin = -30, tMax = 40, pMax = 400;
-    const barW = plotW / 12 * 0.62;
+    const colW = plotW / 12;
+    const barW = colW * 0.62;
     const temps = place.t, precs = place.p;
     const yT = t => padT + (1 - (t - tMin) / (tMax - tMin)) * plotH;
     const yP = p => padT + (1 - Math.min(p, pMax) / pMax) * plotH;
-    const xAt = i => padL + (i + 0.5) * (plotW / 12);
+    const xAt = i => padL + (i + 0.5) * colW;
     let bars = "";
+    let dots = "";
+    let hits = "";
     for (let i = 0; i < 12; i++) {
+      const x = xAt(i);
       const y = yP(precs[i]);
-      bars += `<rect x="${(xAt(i)-barW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0.5, padT+plotH-y).toFixed(1)}" fill="#3a7ca5" opacity="0.85"/>`;
+      const h = Math.max(0.5, padT + plotH - y);
+      bars += `<rect class="climate-bar" data-mi="${i}" x="${(x - barW / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="#3a7ca5" opacity="0.85"/>`;
+      dots += `<circle class="climate-dot" data-mi="${i}" cx="${x.toFixed(1)}" cy="${yT(temps[i]).toFixed(1)}" r="2.2" fill="#c45c26"/>`;
+      hits += `<rect class="climate-hit" data-mi="${i}" x="${(x - colW / 2).toFixed(1)}" y="${padT}" width="${colW.toFixed(1)}" height="${plotH}" fill="transparent">
+        <title>${MONTHS_NL[i]}: ${precs[i]} mm, ${fmtTemp(temps[i])}</title>
+      </rect>`;
     }
-    const pts = temps.map((t,i) => `${xAt(i).toFixed(1)},${yT(t).toFixed(1)}`).join(" ");
-    const months = MONTHS.map((m,i) =>
-      `<text x="${xAt(i).toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="#5a5a5a" font-family="IBM Plex Sans,sans-serif">${m}</text>`).join("");
+    const pts = temps.map((t, i) => `${xAt(i).toFixed(1)},${yT(t).toFixed(1)}`).join(" ");
+    const months = MONTHS.map((m, i) =>
+      `<text class="climate-month" data-mi="${i}" x="${xAt(i).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="9" fill="#5a5a5a" font-family="IBM Plex Sans,sans-serif" style="cursor:pointer">${m}</text>`).join("");
 
     // Köppen-relevante grenzen: 18°C (A/C), 10°C (E), 0°C, −3°C (C/D)
     const keyTemps = [
@@ -773,24 +810,58 @@
       const sw = key ? "1.1" : "0.8";
       const fill = key ? "#c45c26" : "#666";
       const weight = key ? "700" : "400";
-      return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${dash}" opacity="${key ? 0.85 : 0.7}"/>
+      return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${dash}" opacity="${key ? 0.85 : 0.7}"/>
       <text x="2" y="${(y + 3).toFixed(1)}" font-size="8" font-weight="${weight}" fill="${fill}" font-family="IBM Plex Sans,sans-serif">${label}</text>`;
     }).join("");
 
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Klimaatdiagram">
-      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#d9d2c5"/>
-      <line x1="${W-padR}" y1="${padT}" x2="${W-padR}" y2="${padT+plotH}" stroke="#d9d2c5"/>
-      <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="#d9d2c5"/>
-      ${guides}
-      <text x="2" y="${padT-2}" font-size="8" fill="#c45c26" font-family="IBM Plex Sans,sans-serif">°C</text>
-      <text x="${W-2}" y="${padT-2}" font-size="8" fill="#3a7ca5" font-family="IBM Plex Sans,sans-serif" text-anchor="end">mm</text>
-      <text x="${W-2}" y="${yP(400).toFixed(1)}" font-size="8" fill="#888" font-family="IBM Plex Sans,sans-serif" text-anchor="end">400</text>
-      <text x="${W-2}" y="${yP(200).toFixed(1)}" font-size="8" fill="#888" font-family="IBM Plex Sans,sans-serif" text-anchor="end">200</text>
-      ${bars}
-      <polyline fill="none" stroke="#c45c26" stroke-width="2" points="${pts}"/>
-      ${temps.map((t,i)=>`<circle cx="${xAt(i).toFixed(1)}" cy="${yT(t).toFixed(1)}" r="2.2" fill="#c45c26"/>`).join("")}
-      ${months}
-    </svg>`;
+    const payload = encodeURIComponent(JSON.stringify({ t: temps, p: precs }));
+    return `<div class="climate-fig" data-climate-fig data-series="${payload}">
+      <svg class="climate-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Klimaatdiagram — klik een maand voor mm en °C">
+        <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#d9d2c5"/>
+        <line x1="${W - padR}" y1="${padT}" x2="${W - padR}" y2="${padT + plotH}" stroke="#d9d2c5"/>
+        <line x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}" stroke="#d9d2c5"/>
+        ${guides}
+        <text x="2" y="${padT - 2}" font-size="8" fill="#c45c26" font-family="IBM Plex Sans,sans-serif">°C</text>
+        <text x="${W - 2}" y="${padT - 2}" font-size="8" fill="#3a7ca5" font-family="IBM Plex Sans,sans-serif" text-anchor="end">mm</text>
+        <text x="${W - 2}" y="${yP(400).toFixed(1)}" font-size="8" fill="#888" font-family="IBM Plex Sans,sans-serif" text-anchor="end">400</text>
+        <text x="${W - 2}" y="${yP(200).toFixed(1)}" font-size="8" fill="#888" font-family="IBM Plex Sans,sans-serif" text-anchor="end">200</text>
+        ${bars}
+        <polyline fill="none" stroke="#c45c26" stroke-width="2" points="${pts}"/>
+        ${dots}
+        ${months}
+        <g class="climate-hits">${hits}</g>
+      </svg>
+      <div class="climate-readout is-empty" data-climate-readout aria-live="polite">Klik een maand → mm en °C</div>
+    </div>`;
+  }
+
+  function bindClimateFigs(root = document) {
+    root.querySelectorAll("[data-climate-fig]").forEach(fig => {
+      if (fig.dataset.bound === "1") return;
+      fig.dataset.bound = "1";
+      let series;
+      try {
+        series = JSON.parse(decodeURIComponent(fig.getAttribute("data-series") || ""));
+      } catch {
+        return;
+      }
+      const readout = fig.querySelector("[data-climate-readout]");
+      const setMonth = (mi) => {
+        if (mi == null || mi < 0 || mi > 11) return;
+        fig.querySelectorAll(".is-active").forEach(el => el.classList.remove("is-active"));
+        fig.querySelectorAll(`[data-mi="${mi}"]`).forEach(el => el.classList.add("is-active"));
+        const mm = series.p[mi];
+        const t = series.t[mi];
+        readout.classList.remove("is-empty");
+        readout.textContent = `${MONTHS_NL[mi]} · ${mm} mm · ${fmtTemp(t)}`;
+      };
+      fig.querySelectorAll("[data-mi]").forEach(el => {
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setMonth(Number(el.getAttribute("data-mi")));
+        });
+      });
+    });
   }
 
   function hemiInfo(lat) {
@@ -1322,7 +1393,7 @@
         </div>
         <span class="pill">${pill}</span>
       </div>
-      ${climateSvg(placeData)}
+      ${climateFigHtml(placeData)}
       ${inReview ? reviewBlock : `
       <div class="place-row">
         <label for="preview-place">Plaats</label>
@@ -1334,6 +1405,7 @@
       </div>`}`;
     box.querySelector("[data-prev]")?.addEventListener("click", () => stepDiagram(-1));
     box.querySelector("[data-next]")?.addEventListener("click", () => stepDiagram(1));
+    bindClimateFigs(box);
     if (!inReview) {
       const placeSel = box.querySelector("[data-preview-place]");
       if (placeSel) {
@@ -1368,7 +1440,7 @@
           <strong>Diagram ${idx+1}</strong>
           <button type="button" data-select="${pid}">Selecteer</button>
         </div>
-        ${climateSvg(curve)}
+        ${climateFigHtml(curve)}
         <div class="assign-row">
           <label>Plaats
             <select data-place-for="${pid}" ${disabled}>${placeOptionsHtml(pid)}</select>
@@ -1385,6 +1457,7 @@
       root.appendChild(card);
     });
 
+    bindClimateFigs(root);
     root.querySelectorAll("[data-select]").forEach(btn => {
       btn.addEventListener("click", () => selectDiagram(btn.getAttribute("data-select")));
     });
@@ -1401,7 +1474,7 @@
     });
     root.querySelectorAll(".diagram-card").forEach(card => {
       card.addEventListener("click", (e) => {
-        if (e.target.closest("select, button")) return;
+        if (e.target.closest("select, button, [data-climate-fig]")) return;
         selectDiagram(card.dataset.pid);
       });
     });
