@@ -445,15 +445,27 @@
       font-size: 1.1rem; font-weight: 600; margin: 0 0 0.75rem;
       font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
     }
-    .legend-codes {
-      display: flex; flex-wrap: wrap; gap: 0.35rem;
-      margin: 0.5rem 0 0;
-      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-      font-size: 0.75rem; color: var(--muted);
+    .map-preview .preview-actions {
+      display: flex; flex-wrap: wrap; gap: 0.25rem;
+      margin-top: 0.3rem; padding-top: 0.28rem;
+      border-top: 1px dashed var(--line);
     }
-    .legend-codes code {
-      background: var(--accent-soft); color: var(--ink);
-      padding: 0.1rem 0.35rem; border-radius: 4px;
+    .map-preview .preview-actions button {
+      font-family: inherit; font-size: 0.62rem;
+      border: 1px solid var(--line); background: var(--panel);
+      color: var(--ink); padding: 0.18rem 0.45rem; border-radius: 5px;
+      cursor: pointer; line-height: 1.2;
+    }
+    .map-preview .preview-actions button.primary {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .map-preview .instant-result {
+      margin-top: 0.25rem; font-weight: 700; font-size: 0.68rem;
+    }
+    .map-preview .instant-result.ok { color: var(--ok); }
+    .map-preview .instant-result.bad { color: var(--bad); }
+    .map-preview .instant-result .detail {
+      display: block; font-weight: 500; color: var(--muted); font-size: 0.58rem;
     }
   </style>
 </head>
@@ -462,7 +474,7 @@
     <header class="site">
       <p class="eyebrow"><a href="../../index.html">Lucie</a> · AK · Klimaat · Köppen H3.5</p>
       <h1>Klimaatdiagrammen koppelen</h1>
-      <p class="lede howto">Grote plaatsengroep. Kies <strong>1</strong>, <strong>4</strong> of <strong>8</strong> diagrammen per ronde → plaats → Köppen (boekcodes). Na nakijken eerst uitleg.</p>
+      <p class="lede howto">Kies <strong>1</strong>, <strong>4</strong> of <strong>8</strong> per ronde. Bij <strong>1</strong>: plaats staat vast, alleen Köppen. Bij 4/8: plaats + Köppen. Preview: nakijken.</p>
     </header>
 
     <div class="toolbar" id="toolbar">
@@ -491,7 +503,6 @@
           <div class="map-preview empty" id="map-preview">Nog geen diagram geselecteerd.</div>
           <div class="map-explain hidden" id="map-explain" aria-live="polite"></div>
         </div>
-        <p class="legend-codes" id="code-legend"></p>
       </section>
 
       <section class="diagrams-panel" aria-label="Klimaatdiagrammen">
@@ -556,7 +567,10 @@
     usedCodes: [],
     previewPos: null, // { left, top } px in .map-wrap
     reviewScore: null,
+    revealed: {}, // diagramId -> true after preview nakijken
   };
+
+  function isSolo() { return state.roundSize === 1; }
 
   let previewDrag = null; // { startX, startY, origLeft, origTop }
 
@@ -643,10 +657,35 @@
   function gradeDiagram(pid) {
     const truth = byId(pid);
     const ans = state.answers[pid] || { placeId: "", koppen: "" };
-    const locOk = ans.placeId === pid;
+    const locOk = isSolo() ? true : ans.placeId === pid;
     const kopOk = ans.koppen === truth.koppen;
-    const status = locOk && kopOk ? "ok" : (locOk || kopOk) ? "partial" : "bad";
+    const status = isSolo()
+      ? (kopOk ? "ok" : "bad")
+      : (locOk && kopOk ? "ok" : (locOk || kopOk) ? "partial" : "bad");
     return { truth, ans, locOk, kopOk, status };
+  }
+
+  function lockSoloPlaces() {
+    if (!isSolo()) return;
+    for (const pid of state.diagramOrder) {
+      const a = ensureAnswer(pid);
+      a.placeId = pid;
+    }
+  }
+
+  function revealActive({ advanceSolo = false } = {}) {
+    const pid = state.activeDiagram;
+    if (!pid || state.phase !== "play") {
+      if (advanceSolo && isSolo()) startRound();
+      return;
+    }
+    if (!state.revealed[pid]) {
+      if (isSolo()) lockSoloPlaces();
+      state.revealed[pid] = true;
+      renderDiagrams();
+      return;
+    }
+    if (advanceSolo && isSolo()) startRound();
   }
 
   function clampPreviewPos(left, top, boxW, boxH, mapW, mapH, pad = 8) {
@@ -760,16 +799,21 @@
     const el = document.getElementById("map-explain");
     const map = document.getElementById("map");
     if (!el || !map) return;
-    if (state.phase !== "review" || !state.activeDiagram) {
+    const pid = state.activeDiagram;
+    const show = pid && (state.phase === "review" || !!state.revealed[pid]);
+    if (!show) {
       el.className = "map-explain hidden";
       el.innerHTML = "";
       return;
     }
-    const { truth, ans, locOk, kopOk, status } = gradeDiagram(state.activeDiagram);
+    const { truth, ans, locOk, kopOk, status } = gradeDiagram(pid);
     const guessed = ans.placeId ? byId(ans.placeId) : null;
-    const locLine = locOk
-      ? `Plaats juist: ${truth.name}`
-      : `Jij: ${guessed ? guessed.name : "—"} → juist: ${truth.name}`;
+    const solo = isSolo();
+    const locLine = solo
+      ? `Plaats gegeven: ${truth.name}`
+      : (locOk
+        ? `Plaats juist: ${truth.name}`
+        : `Jij: ${guessed ? guessed.name : "—"} → juist: ${truth.name}`);
     const kopLine = kopOk
       ? `Köppen juist: ${truth.koppen}`
       : `Jij: ${ans.koppen || "—"} → juist: ${truth.koppen}`;
@@ -779,7 +823,7 @@
     el.className = `map-explain status-${status}`;
     el.innerHTML = `
       <strong>${statusLabel} · ${truth.name}</strong>
-      <p class="${locOk ? "row-ok" : "row-bad"}">${locLine}</p>
+      ${solo ? "" : `<p class="${locOk ? "row-ok" : "row-bad"}">${locLine}</p>`}
       <p class="${kopOk ? "row-ok" : "row-bad"}">${kopLine}</p>
       ${whyHtml}`;
 
@@ -1270,7 +1314,7 @@
 
   function koppenPickerHtml(forPid, compact) {
     const ans = ensureAnswer(forPid);
-    const disabled = state.phase !== "play";
+    const disabled = state.phase !== "play" || !!state.revealed[forPid];
     const groupChips = Object.entries(GROUP_META).map(([g, meta]) => {
       const active = ans.group === g ? " active" : "";
       return `<button type="button" class="koppen-chip${active}" data-koppen-group="${g}" ${disabled ? "disabled" : ""} title="${meta.hint}">` +
@@ -1329,6 +1373,14 @@
 
   function stepDiagram(delta) {
     if (!state.diagramOrder.length) return;
+    if (isSolo() && state.phase === "play") {
+      // Solo: › = eerst nakijken, daarna nieuwe plek
+      if (delta > 0) {
+        revealActive({ advanceSolo: true });
+        return;
+      }
+      return;
+    }
     const cur = state.activeDiagram
       ? state.diagramOrder.indexOf(state.activeDiagram)
       : 0;
@@ -1373,15 +1425,11 @@
     renderDiagrams();
   }
 
-  function renderLegend() {
-    document.getElementById("code-legend").innerHTML =
-      KOPPEN_CODES.map(c => `<code title="${KOPPEN_HELP[c]||""}">${c}</code>`).join(" ");
-  }
-
   function startRound() {
     if (!PLACES.length) return;
     state.phase = "play";
     state.answers = {};
+    state.revealed = {};
     state.round = pickRound(state.roundSize);
     state.usedIds = state.usedIds.concat(state.round.map(p => p.id));
     state.usedCodes = state.usedCodes.concat(state.round.map(p => p.koppen));
@@ -1389,15 +1437,16 @@
     state.activeDiagram = state.diagramOrder[0] || null;
     state.previewPos = null;
     state.reviewScore = null;
+    lockSoloPlaces();
 
     document.getElementById("review").classList.add("hidden");
     document.getElementById("play").classList.remove("hidden");
-    document.getElementById("btn-check").classList.remove("hidden");
+    document.getElementById("btn-check").classList.toggle("hidden", isSolo());
     document.getElementById("btn-new").classList.add("hidden");
     document.getElementById("map-hint").textContent =
-      state.roundSize === 1
-        ? "Eén diagram: plaats kiezen → Köppen in 2 stappen. Evenaar = N.H./Z.H."
-        : "Diagram → plaats → Köppen in 2 stappen (A–E, daarna f/s/w…). Evenaar = N.H./Z.H. Preview verslepen via de kop.";
+      isSolo()
+        ? "Solo: plaats staat vast. Bouw Köppen → Nakijken of › voor nakijken + volgende plek."
+        : "Diagram → plaats → Köppen in 2 stappen. Preview: Nakijken. Evenaar = N.H./Z.H.";
     document.getElementById("round-meta").textContent =
       `Ronde: ${state.round.length} · pool ${PLACES.length}`;
 
@@ -1437,51 +1486,83 @@
     const idx = diagramIndex(pid);
     const total = state.diagramOrder.length;
     const inReview = state.phase === "review";
-    const disabled = inReview ? "disabled" : "";
-    const hasPlace = !!ans.placeId;
-    const chosen = hasPlace ? byId(ans.placeId) : null;
+    const revealed = inReview || !!state.revealed[pid];
+    const disabled = (inReview || revealed) ? "disabled" : "";
+    const solo = isSolo();
+    if (solo) lockSoloPlaces();
+    const hasPlace = solo || !!ans.placeId;
+    const chosen = hasPlace ? byId(ans.placeId || pid) : null;
 
     let statusClass = "";
     let reviewBlock = "";
-    let pill = chosen ? chosen.name : "kies plaats";
-    if (inReview) {
+    let pill = solo
+      ? `${placeData.name}`
+      : (chosen ? chosen.name : "kies plaats");
+    if (revealed) {
       const g = gradeDiagram(pid);
       statusClass = ` status-${g.status}`;
       const statusLabel = g.status === "ok" ? "Goed" : g.status === "partial" ? "Deels" : "Fout";
       pill = `${statusLabel} · ${g.truth.name}`;
-      const locCls = g.locOk ? "row-ok" : "row-bad";
-      const kopCls = g.kopOk ? "row-ok" : "row-bad";
-      reviewBlock = `
-        <div class="review-status">
-          <div class="${locCls}">Plaats: ${g.locOk ? "juist" : `fout (${chosen ? chosen.name : "—"})`} → ${g.truth.name}</div>
-          <div class="${kopCls}">Köppen: ${g.kopOk ? "juist" : `fout (${ans.koppen || "—"})`} → ${g.truth.koppen}</div>
-        </div>`;
+      if (solo) {
+        reviewBlock = `
+          <div class="instant-result ${g.kopOk ? "ok" : "bad"}">
+            ${g.kopOk ? "Ja — Köppen juist" : "Nee — Köppen fout"}
+            <span class="detail">Jij: ${ans.koppen || "—"} → juist: ${g.truth.koppen}</span>
+          </div>`;
+      } else {
+        const locCls = g.locOk ? "row-ok" : "row-bad";
+        const kopCls = g.kopOk ? "row-ok" : "row-bad";
+        reviewBlock = `
+          <div class="review-status">
+            <div class="${locCls}">Plaats: ${g.locOk ? "juist" : `fout (${chosen ? chosen.name : "—"})`} → ${g.truth.name}</div>
+            <div class="${kopCls}">Köppen: ${g.kopOk ? "juist" : `fout (${ans.koppen || "—"})`} → ${g.truth.koppen}</div>
+          </div>`;
+      }
     }
+
+    const placeBlock = solo
+      ? `<div class="place-row"><label>Plaats</label><div class="pill">${placeData.name} (${placeData.country})</div></div>`
+      : `<div class="place-row">
+        <label for="preview-place">Plaats</label>
+        <select id="preview-place" data-preview-place ${disabled}>${placeOptionsHtml(pid)}</select>
+      </div>`;
+
+    const actions = (!inReview) ? `
+      <div class="preview-actions">
+        <button type="button" class="primary" data-preview-check>${revealed ? "Opnieuw bekeken" : "Nakijken"}</button>
+        ${solo ? `<button type="button" data-preview-next>${revealed ? "Volgende plek" : "Volgende (nakijken)"}</button>` : ""}
+      </div>` : "";
 
     box.className = "map-preview" + statusClass;
     box.innerHTML = `
       <div class="map-preview-head" title="Slepen om te verplaatsen">
         <div class="map-preview-nav">
-          <button type="button" data-prev title="Vorig diagram" aria-label="Vorig diagram">‹</button>
-          <span class="nav-label">Diagram ${idx}/${total}</span>
-          <button type="button" data-next title="Volgend diagram" aria-label="Volgend diagram">›</button>
+          ${solo ? "" : `<button type="button" data-prev title="Vorig diagram" aria-label="Vorig diagram">‹</button>`}
+          <span class="nav-label">${solo ? "Solo" : `Diagram ${idx}/${total}`}</span>
+          <button type="button" data-next title="${solo ? "Nakijken / volgende" : "Volgend diagram"}" aria-label="Volgend">${solo ? "›" : "›"}</button>
         </div>
         <span class="pill">${pill}</span>
       </div>
       ${climateFigHtml(placeData)}
-      ${inReview ? reviewBlock : `
-      <div class="place-row">
-        <label for="preview-place">Plaats</label>
-        <select id="preview-place" data-preview-place ${disabled}>${placeOptionsHtml(pid)}</select>
-      </div>
+      ${revealed ? reviewBlock : ""}
+      ${inReview ? "" : `
+      ${placeBlock}
       <div class="guess-block ${hasPlace ? "ready" : "locked"}">
         <label>Köppen ${hasPlace ? "— bouw je code" : "— kies eerst een plaats"}</label>
         ${hasPlace ? koppenPickerHtml(pid) : '<p class="sub" style="margin:0;color:var(--muted)">Eerst een plaats, dan A–E en daarna de toevoeging.</p>'}
-      </div>`}`;
+      </div>
+      ${actions}`}`;
     box.querySelector("[data-prev]")?.addEventListener("click", () => stepDiagram(-1));
     box.querySelector("[data-next]")?.addEventListener("click", () => stepDiagram(1));
+    box.querySelector("[data-preview-check]")?.addEventListener("click", () => {
+      if (state.revealed[pid]) return;
+      revealActive();
+    });
+    box.querySelector("[data-preview-next]")?.addEventListener("click", () => {
+      revealActive({ advanceSolo: true });
+    });
     bindClimateFigs(box);
-    if (!inReview) {
+    if (!inReview && !revealed) {
       const placeSel = box.querySelector("[data-preview-place]");
       if (placeSel) {
         placeSel.addEventListener("change", () => {
@@ -1501,6 +1582,8 @@
   function renderDiagrams() {
     const root = document.getElementById("diagrams");
     root.innerHTML = "";
+    const solo = isSolo();
+    if (solo) lockSoloPlaces();
     state.diagramOrder.forEach((pid, idx) => {
       const curve = byId(pid);
       const ans = ensureAnswer(pid);
@@ -1508,22 +1591,32 @@
       const card = document.createElement("div");
       card.className = "diagram-card" + (state.activeDiagram === pid ? " active" : "");
       card.dataset.pid = pid;
-      const disabled = state.phase !== "play" ? "disabled" : "";
-      const hasPlace = !!ans.placeId;
-      card.innerHTML = `
-        <div class="diagram-head">
-          <strong>Diagram ${idx+1}</strong>
-          <button type="button" data-select="${pid}">Selecteer</button>
-        </div>
-        ${climateFigHtml(curve)}
-        <div class="assign-row">
+      const revealed = state.phase === "review" || !!state.revealed[pid];
+      const disabled = (state.phase !== "play" || revealed) ? "disabled" : "";
+      const hasPlace = solo || !!ans.placeId;
+      const assignRow = solo
+        ? `<div class="assign-row"><span class="pill">${curve.name} · alleen Köppen</span></div>`
+        : `<div class="assign-row">
           <label>Plaats
             <select data-place-for="${pid}" ${disabled}>${placeOptionsHtml(pid)}</select>
           </label>
           <span class="pill">${chosen ? chosen.name + (ans.koppen ? " · "+ans.koppen : (ans.group ? " · "+ans.group+"…" : "")) : "niet gekoppeld"}</span>
+        </div>`;
+      card.innerHTML = `
+        <div class="diagram-head">
+          <strong>${solo ? curve.name : `Diagram ${idx+1}`}</strong>
+          <button type="button" data-select="${pid}">Selecteer</button>
         </div>
-        ${hasPlace ? koppenPickerHtml(pid, true) : ""}`;
-      if (state.phase === "review") {
+        ${climateFigHtml(curve)}
+        ${assignRow}
+        ${hasPlace && !revealed ? koppenPickerHtml(pid, true) : ""}
+        ${revealed && solo ? (() => {
+          const g = gradeDiagram(pid);
+          return `<div class="instant-result ${g.kopOk ? "ok" : "bad"}" style="margin-top:0.3rem;font-size:0.78rem">
+            ${g.kopOk ? "Ja" : "Nee"} · jij ${ans.koppen || "—"} → ${g.truth.koppen}
+          </div>`;
+        })() : ""}`;
+      if (revealed) {
         const g = gradeDiagram(pid);
         card.classList.toggle("ok", g.status === "ok");
         card.classList.toggle("partial", g.status === "partial");
@@ -1588,19 +1681,25 @@
   }
 
   function onPlaceClick(placeId) {
-    if (state.phase !== "play") return;
+    if (state.phase !== "play" || isSolo()) return;
     if (!state.activeDiagram) {
       const free = state.diagramOrder.find(pid => !(state.answers[pid] && state.answers[pid].placeId));
       state.activeDiagram = free || state.diagramOrder[0];
     }
+    if (state.revealed[state.activeDiagram]) return;
     setPlace(state.activeDiagram, placeId);
     renderDiagrams();
   }
 
   function checkRound() {
+    if (isSolo()) {
+      revealActive();
+      return;
+    }
     let scoreLoc = 0, scoreKop = 0;
     const items = [];
     state.diagramOrder.forEach((pid, idx) => {
+      state.revealed[pid] = true;
       const g = gradeDiagram(pid);
       if (g.locOk) scoreLoc++;
       if (g.kopOk) scoreKop++;
@@ -1653,7 +1752,6 @@
 
   async function boot() {
     syncSizePicker();
-    renderLegend();
     const meta = document.getElementById("round-meta");
     meta.textContent = "Plaatsen laden…";
     try {
